@@ -1,0 +1,40 @@
+# Modelsim/QuestaSim generated files
+work/
+transcript
+vsim.wlf
+*.mpf
+*.mti
+*.wlf
+*.vstf
+
+# Python (Assembler)
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Assembler output (optional - uncomment if needed for submission)
+# assembler/output/*.mem
+# assembler/output/*.hex
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# Simulation waveforms (optional - keep if needed for documentation)
+# simulation/waveforms/*.wlf
+
+# Backup files
+*.bak
+*~
