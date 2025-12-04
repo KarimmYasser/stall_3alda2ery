@@ -1,0 +1,164 @@
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
+
+-- ID/EX Pipeline Register with Memory Usage Feedback
+-- Stores all control signals and data from Decode stage using general_register components
+-- Implements feedback loop for von Neumann memory structural hazard detection
+ENTITY id_ex_reg_with_feedback IS
+    PORT (
+        clk             : IN  STD_LOGIC;
+        reset           : IN  STD_LOGIC;
+        write_enable    : IN  STD_LOGIC;
+        
+        -- Memory usage prediction from Control Unit (Decode stage)
+        mem_usage_predict_in : IN STD_LOGIC;
+        
+        -- Feedback to Control Unit (Decode stage) - indicates memory will be used next cycle
+        mem_will_be_used_out : OUT STD_LOGIC;
+        
+        -- Immediate fetch prediction from Control Unit (Decode stage)
+        Imm_predict_in : IN STD_LOGIC;
+        
+        -- Feedback to Control Unit (Decode stage) - indicates immediate will be fetched
+        Imm_in_use_out : OUT STD_LOGIC;
+        
+        -- Control signals from Decode
+        WB_flages_in    : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        EXE_flages_in   : IN  STD_LOGIC_VECTOR(4 DOWNTO 0);
+        MEM_flages_in   : IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
+        IO_flages_in    : IN  STD_LOGIC_VECTOR(1 DOWNTO 0);
+        Branch_Exec_in  : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
+        
+        -- Control signals to Execute
+        WB_flages_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        EXE_flages_out  : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+        MEM_flages_out  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        IO_flages_out   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+        Branch_Exec_out : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        
+        -- Data signals from Decode
+        Rrs1_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        Rrs2_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        index_in        : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        pc_in           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_addr_in     : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rs2_addr_in     : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rd_addr_in      : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        
+        -- Data signals to Execute
+        Rrs1_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        Rrs2_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        index_out       : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        pc_out          : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1_addr_out    : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rs2_addr_out    : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rd_addr_out     : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+    );
+END ENTITY id_ex_reg_with_feedback;
+
+ARCHITECTURE Behavioral OF id_ex_reg_with_feedback IS
+    -- Component declaration for general_register
+    COMPONENT general_register IS
+        GENERIC (
+            REGISTER_SIZE : INTEGER := 32;
+            RESET_VALUE   : INTEGER := 0
+        );
+        PORT (
+            clk          : IN  STD_LOGIC;
+            reset        : IN  STD_LOGIC;
+            write_enable : IN  STD_LOGIC;
+            data_in      : IN  STD_LOGIC_VECTOR(REGISTER_SIZE - 1 DOWNTO 0);
+            data_out     : OUT STD_LOGIC_VECTOR(REGISTER_SIZE - 1 DOWNTO 0)
+        );
+    END COMPONENT;
+    
+    -- Concatenated input/output signals for vector registers
+    SIGNAL control_flags_in  : STD_LOGIC_VECTOR(20 DOWNTO 0); -- 3+5+7+2+4
+    SIGNAL control_flags_out : STD_LOGIC_VECTOR(20 DOWNTO 0);
+    SIGNAL addresses_in      : STD_LOGIC_VECTOR(11 DOWNTO 0);  -- 3+3+3+3 (index+rs1+rs2+rd)
+    SIGNAL addresses_out     : STD_LOGIC_VECTOR(11 DOWNTO 0);
+    SIGNAL mem_predict_vec_in  : STD_LOGIC_VECTOR(0 DOWNTO 0);
+    SIGNAL mem_predict_vec_out : STD_LOGIC_VECTOR(0 DOWNTO 0);
+    SIGNAL imm_predict_vec_in  : STD_LOGIC_VECTOR(0 DOWNTO 0);
+    SIGNAL imm_predict_vec_out : STD_LOGIC_VECTOR(0 DOWNTO 0);
+    
+BEGIN
+    -- Pack inputs
+    control_flags_in <= WB_flages_in & EXE_flages_in & MEM_flages_in & IO_flages_in & Branch_Exec_in;
+    addresses_in     <= rd_addr_in & index_in & rs1_addr_in & rs2_addr_in;
+    mem_predict_vec_in(0) <= mem_usage_predict_in;
+    imm_predict_vec_in(0) <= Imm_predict_in;
+    
+    -- Unpack outputs
+    WB_flages_out   <= control_flags_out(20 DOWNTO 18);
+    EXE_flages_out  <= control_flags_out(17 DOWNTO 13);
+    MEM_flages_out  <= control_flags_out(12 DOWNTO 6);
+    IO_flages_out   <= control_flags_out(5 DOWNTO 4);
+    Branch_Exec_out <= control_flags_out(3 DOWNTO 0);
+    
+    rd_addr_out  <= addresses_out(11 DOWNTO 9);
+    index_out    <= addresses_out(8 DOWNTO 6);
+    rs1_addr_out <= addresses_out(5 DOWNTO 3);
+    rs2_addr_out <= addresses_out(2 DOWNTO 0);
+    
+    mem_will_be_used_out <= mem_predict_vec_out(0);
+    Imm_in_use_out <= imm_predict_vec_out(0);
+    
+    -- Memory usage prediction register (1-bit feedback signal)
+    REG_MEM_PREDICT: general_register
+        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => mem_predict_vec_in, data_out => mem_predict_vec_out
+        );
+    
+    -- Immediate fetch prediction register (1-bit feedback signal)
+    REG_IMM_PREDICT: general_register
+        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => imm_predict_vec_in, data_out => imm_predict_vec_out
+        );
+    
+    -- Control flags register (21 bits)
+    REG_CONTROL_FLAGS: general_register
+        GENERIC MAP (REGISTER_SIZE => 21, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => control_flags_in, data_out => control_flags_out
+        );
+    
+    -- Rrs1 register (32 bits)
+    REG_RRS1: general_register
+        GENERIC MAP (REGISTER_SIZE => 32, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => Rrs1_in, data_out => Rrs1_out
+        );
+    
+    -- Rrs2 register (32 bits)
+    REG_RRS2: general_register
+        GENERIC MAP (REGISTER_SIZE => 32, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => Rrs2_in, data_out => Rrs2_out
+        );
+    
+    -- PC register (32 bits)
+    REG_PC: general_register
+        GENERIC MAP (REGISTER_SIZE => 32, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => pc_in, data_out => pc_out
+        );
+    
+    -- Addresses register (12 bits: rd_addr + index + rs1_addr + rs2_addr)
+    REG_ADDRESSES: general_register
+        GENERIC MAP (REGISTER_SIZE => 12, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk, reset => reset, write_enable => write_enable,
+            data_in => addresses_in, data_out => addresses_out
+        );
+    
+END ARCHITECTURE Behavioral;

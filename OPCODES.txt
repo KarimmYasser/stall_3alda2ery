@@ -1,0 +1,56 @@
+================================================================================
+                    INSTRUCTION SET - OPCODE REFERENCE
+================================================================================
+
+Format: OPCODE (5-bit binary) | Instruction Mnemonic | Description
+--------------------------------------------------------------------------------
+
+GROUP 0: Format Type Instructions (Bit 4 = 0)
+--------------------------------------------------------------------------------
+00000  |  NOP    |  No Operation
+00001  |  HLT    |  Halt - Stop processor execution
+00010  |  SETC   |  Set Carry flag
+00011  |  INC    |  Increment register by 1
+00100  |  NOT    |  Bitwise NOT operation
+00101  |  LDM    |  Load immediate value to register
+00110  |  MOV    |  Move data between registers
+00111  |  SWAP   |  Swap register contents (multi-cycle)
+01000  |  IADD   |  Immediate Add
+01001  |  ADD    |  Add two registers
+01010  |  SUB    |  Subtract two registers
+01011  |  AND    |  Bitwise AND operation
+01100  |  JZ     |  Jump if Zero flag is set
+01101  |  JN     |  Jump if Negative flag is set
+01110  |  JC     |  Jump if Carry flag is set
+01111  |  JMP    |  Unconditional Jump
+
+--------------------------------------------------------------------------------
+GROUP 1: Format Type Instructions (Bit 4 = 1)
+--------------------------------------------------------------------------------
+10000  |  OUT    |  Output data to I/O port
+10001  |  IN     |  Input data from I/O port
+10010  |  PUSH   |  Push register value onto stack
+10011  |  POP    |  Pop value from stack to register
+10100  |  LDD    |  Load data from memory (with offset)
+10101  |  STD    |  Store data to memory (with offset)
+10110  |  CALL   |  Call subroutine (save PC and jump)
+10111  |  RET    |  Return from subroutine
+11000  |  INT    |  Software interrupt (multi-cycle)
+11001  |  RTI    |  Return from interrupt (multi-cycle)
+
+================================================================================
+MULTI-CYCLE INSTRUCTIONS
+================================================================================
+SWAP:  2 cycles - Swaps content between two registers
+INT:   3 cycles - Stores PC, stores CCR, reads interrupt vector
+RTI:   2 cycles - Restores CCR, restores PC from stack
+
+================================================================================
+NOTES
+================================================================================
+- Opcode is 5 bits wide (bits [4:0])
+- Bit 4 determines instruction group (0 or 1)
+- Bits [3:0] determine specific instruction within group
+- Some instructions are not implemented (reserved for future use)
+- Multi-cycle instructions use microcode sequences in control unit
+================================================================================

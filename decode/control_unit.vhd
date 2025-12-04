@@ -6,6 +6,7 @@ Entity Control_Unit is
         inturrupt : in std_logic;
         op_code : in std_logic_vector(4 downto 0);
         data_ready : in std_logic;
+        mem_will_be_used : in std_logic; -- Feedback from Execute stage: '1' when memory/stack will be accessed in next cycle
         FD_enable : out std_logic;
         Micro_inst: out std_logic_vector(4 downto 0);
         Stall :out std_logic;
@@ -14,11 +15,16 @@ Entity Control_Unit is
         MW_enable :out std_logic;
         Branch_Decode: out std_logic;
         ID_flush :out std_logic;
-        WB_flages: out std_logic_vector(2 downto 0);
-        EXE_flages: out std_logic_vector(4 downto 0);
-        MEM_flages: out std_logic_vector(6 downto 0);
-        IO_flages: out std_logic_vector(1 downto 0);
-        CSwap : out std_logic 
+        mem_usage_predict : out std_logic; -- Predict memory usage for next instruction (goes to Execute stage)
+        WB_flages: out std_logic_vector(2 downto 0);  -- (2)RegWrite, (1)MemtoReg, (0)PC-select
+        EXE_flages: out std_logic_vector(4 downto 0); -- (4:2)ALU_OP, (1)ALUSrc, (0)Index
+        MEM_flages: out std_logic_vector(6 downto 0); -- (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore/CCRLoad, (0)CCRLoad
+        IO_flages: out std_logic_vector(1 downto 0);  -- (1)output, (0)input
+        CSwap : out std_logic;
+        Branch_Exec: out std_logic_vector(3 downto 0); -- (3)sel1, (2)sel0, (1)imm, (0)branch
+        CCR_enable : out std_logic;
+        Imm_predict : out std_logic;
+        Imm_in_use: in std_logic
     );
 END entity Control_Unit;
 
@@ -28,7 +34,8 @@ architecture behavior of Control_Unit is
         M_INT_Sig_0, M_INT_Sig_1, M_INT_Sig_2,
         M_INT_0, M_INT_1, M_INT_2,
         M_SWAP_0, M_SWAP_1,
-        M_RTI_0, M_RTI_1
+        M_RTI_0, M_RTI_1,
+        M_IMMEDIATE
     );
 
     signal micro_state : micro_state_type := M_IDLE;
@@ -49,6 +56,8 @@ architecture behavior of Control_Unit is
     signal micro_EXE_flages : std_logic_vector(4 downto 0) := (others => '0');
     signal micro_MEM_flages : std_logic_vector(6 downto 0) := (others => '0');
     signal micro_IO_flages  : std_logic_vector(1 downto 0) := (others => '0');
+    signal micro_Branch_Exec : std_logic_vector(3 downto 0) := (others => '0');
+    signal micro_CCR_enable : std_logic := '1';
 
     ------------------------------------------------------------------
     -- Main (combinational) decoder signals
@@ -57,6 +66,7 @@ architecture behavior of Control_Unit is
     signal main_DE_enable  : std_logic := '1';
     signal main_EM_enable  : std_logic := '1';
     signal main_MW_enable  : std_logic := '1';
+    signal main_CCR_enable : std_logic := '1';
     signal main_Stall      : std_logic := '0';
     signal main_ID_flush   : std_logic := '0';
     signal main_Branch_Decode : std_logic := '0';
@@ -66,17 +76,22 @@ architecture behavior of Control_Unit is
     signal main_EXE_flages : std_logic_vector(4 downto 0) := (others => '0');
     signal main_MEM_flages : std_logic_vector(6 downto 0) := (others => '0');
     signal main_IO_flages  : std_logic_vector(1 downto 0) := (others => '0');
+    signal main_Branch_Exec : std_logic_vector(3 downto 0) := (others => '0');
     signal start_swap_req : std_logic := '0';
     signal start_int_req  : std_logic := '0';
     signal start_rti_req  : std_logic := '0';
     signal start_int_signal_req  : std_logic := '0';
+    signal start_immediate_req : std_logic := '0';
+    signal main_Imm_predict : std_logic := '0';
     ------------------------------------------------------------------
     -- Final outputs are multiplexed between micro_ and main_
     ------------------------------------------------------------------
     begin
-    Micro_seq : Process(clk)
+    Micro_seq : Process(clk, inturrupt)
         begin
-            if rising_edge(clk) then
+            if(inturrupt='1') then
+                micro_state <= M_INT_Sig_0;
+            elsif rising_edge(clk) then
                 micro_state <= micro_next;
             end if;
         end process Micro_seq;
@@ -85,7 +100,7 @@ architecture behavior of Control_Unit is
     micro_active <= '0' when micro_state = M_IDLE else '1';
 
     Micro_comb :process(micro_state,inturrupt,start_int_signal_req,start_swap_req,start_rti_req,
-                        start_int_req)
+                        start_int_req,start_immediate_req,Imm_in_use)
             begin
                 -- defaults for micro signals (inactive)
                 micro_next <= micro_state;
@@ -93,6 +108,7 @@ architecture behavior of Control_Unit is
                 micro_DE_enable  <= '1';
                 micro_EM_enable  <= '1';
                 micro_MW_enable  <= '1';
+                micro_CCR_enable <= '1';
                 micro_Stall      <= '0';
                 micro_ID_flush   <= '0';
                 micro_Branch_Decode <= '0';
@@ -102,24 +118,11 @@ architecture behavior of Control_Unit is
                 micro_EXE_flages <= (others => '0');
                 micro_MEM_flages <= (others => '0');
                 micro_IO_flages  <= (others => '0');
+                micro_Branch_Exec <= (others => '0');
                 
                 case micro_state is
                     when M_IDLE =>
-                        -- Check for micro-sequence requests from main decoder
-                        if start_swap_req = '1' then
-                            micro_next <= M_SWAP_0;
-                        elsif start_int_req = '1' then
-                            micro_next <= M_INT_0;
-                        elsif start_rti_req = '1' then
-                            micro_next <= M_RTI_0;
-                        elsif start_int_signal_req = '1' then
-                            micro_next <= M_INT_Sig_0;
-                        elsif inturrupt = '1' then
-                            micro_next <= M_INT_Sig_0;
-                        else
                             micro_next <= M_IDLE;
-                        end if;
-                    
                     -- Interrupt Signal Sequence (external interrupt)
                     when M_INT_Sig_0 =>
                         -- First cycle: write PC to stack
@@ -142,6 +145,7 @@ architecture behavior of Control_Unit is
                         micro_Micro_inst <= "00000";
                         micro_MEM_flages(5) <= '1'; --MEMRead
                         micro_next <= M_IDLE;
+                        micro_branch_exec(0) <= '1'; --branch
                     
                     -- INT Instruction Sequence
                     when M_INT_0 =>
@@ -168,6 +172,7 @@ architecture behavior of Control_Unit is
                         micro_EXE_flages(1) <= '0'; --ALUSrc
                         micro_EXE_flages(0) <= '1'; --Index
                         micro_EXE_flages(4 downto 2) <= "010";
+                        micro_branch_exec(0) <= '1'; --branch
                         micro_next <= M_IDLE;
                     
                     -- SWAP Instruction Sequence
@@ -199,20 +204,49 @@ architecture behavior of Control_Unit is
                         micro_Stall <= '1';
                         micro_MEM_flages(3) <= '1'; --StackRead
                         micro_Micro_inst <= "00000";
+                        micro_branch_exec(0) <= '1'; --branch
                         micro_next <= M_IDLE;
-                    
+                    when M_IMMEDIATE =>
+                        -- Immediate handling state (if needed in future)
+                        if(micro_Stall='1' ) then
+                            micro_next<= M_IMMEDIATE;
+                            micro_EM_enable <= '0';
+                            micro_Micro_inst <= "00000";
+                        else 
+                            micro_next<= M_IDLE;
+                            micro_EM_enable <= '1';
+                        end if; 
                     when others =>
                         micro_next <= M_IDLE;
                 end case;
+            case micro_next is
+                when M_IDLE =>
+                        if start_swap_req = '1' then
+                            micro_next <= M_SWAP_1;
+                        elsif start_int_req = '1' then
+                            micro_next <= M_INT_1;
+                        elsif start_rti_req = '1' then
+                            micro_next <= M_RTI_1;
+                        elsif inturrupt = '1' then
+                            micro_next <= M_INT_Sig_0;
+                        elsif Imm_in_use = '1'  then
+                            micro_next <= M_IMMEDIATE;
+                        else
+                            micro_next <= M_IDLE;
+                        end if;
+                when others =>
+                    null;
+                end case;
             end process Micro_comb;
 
-Main_comb :  Process(op_code,data_ready,inturrupt)
+Main_comb :  Process(op_code,data_ready)
         begin
         -- default main outputs
             main_FD_enable  <= '1';
             main_DE_enable  <= '1';
             main_EM_enable  <= '1';
             main_MW_enable  <= '1';
+            main_CCR_enable <= '1';
             main_Stall      <= '0';
             main_ID_flush   <= '0';
             main_Branch_Decode <= '0';
@@ -222,18 +256,13 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
             main_EXE_flages <= (others => '0');
             main_MEM_flages <= (others => '0');
             main_IO_flages  <= (others => '0');
+            main_Branch_Exec <= (others => '0');
             start_swap_req <= '0';
             start_int_req  <= '0';
             start_rti_req  <= '0';
             start_int_signal_req  <= '0';
-                if(inturrupt='1')then
-                    main_Stall <='1';
-                    main_Micro_inst <= "11111"; -- request micro INT sequence
-                    main_MEM_flages(2) <= '1'; --StackWrite
-                    main_MEM_flages(6) <= '1'; --WDselect
-                    start_int_signal_req <= '1';
-
-                elsif op_code(4) ='0' then
+            start_immediate_req <= '0';
+                if op_code(4) ='0' then
                     case op_code(3 downto 0) is
                         when "0000" => --noop--
                         null;
@@ -253,6 +282,7 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
                             main_EXE_flages(4 downto 2) <= "010"; --Indexing ########## waiting for ALU Op codes add
                             main_EXE_flages(1) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
+                            start_immediate_req <= '1';
                         when "0110" => --mov--
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "0111" => --SWAP--
@@ -264,6 +294,7 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
                             main_EXE_flages(4 downto 2) <= "010";
                             main_EXE_flages(1) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
+                            start_immediate_req <= '1';
                         when "1001" => --add--
                             main_EXE_flages(4 downto 2) <= "010";
                             main_WB_flages(2) <= '1'; --RegWrite
@@ -274,14 +305,24 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
                             main_EXE_flages(4 downto 2) <= "100";
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "1100" => --JZ--
-                            null;
+                            main_branch_exec(2) <= '1'; --sel0
+                            main_branch_exec(0) <= '1';
+                            main_branch_exec(1) <= '1'; --imm
+                            start_immediate_req <= '1';
                         when "1101" => --JNZ--
-                            null;
+                            main_branch_exec(3) <= '1'; --sel1
+                            main_branch_exec(0) <= '1';
+                            main_branch_exec(1) <= '1'; --imm
+                            start_immediate_req <= '1';
                         when "1110" => --JC--
-                            null;
+                            main_branch_exec(3 downto 2) <= "11"; --sel2
+                            main_branch_exec(0) <= '1';
+                            main_branch_exec(1) <= '1'; --imm
+                            start_immediate_req <= '1';
                         when "1111" => --JMP--
                             main_branch_Decode <= '1';
                             main_ID_flush <= '1';
+                            start_immediate_req <= '1';
                         when others =>
                             null;
                     end case;
@@ -303,10 +344,12 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
                             main_WB_flages(1) <= '1'; --MemtoReg
                             main_WB_flages(2) <= '1'; --RegWrite
                             main_EXE_flages(1) <= '1'; --ALUSrc
+                            start_immediate_req <= '1';
                         when "0101" => --STD--
                             main_MEM_flages(4) <= '1'; --MEMWrite
                             main_EXE_flages(1) <= '1'; --ALUSrc
                             main_MEM_flages(6) <= '0'; --WDselect
+                            start_immediate_req <= '1';
                         when "0110" => --call--
                             main_branch_Decode <= '1';
                             main_ID_flush <= '1';
@@ -314,8 +357,12 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
                             main_MEM_flages(6) <= '1'; --WDselect
                             main_WB_flages(0) <= '1'; --PC-select
                             main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_branch_exec(1) <= '1'; --imm
+                            main_branch_exec(0) <= '1';
+                            start_immediate_req <= '1';
                         when "0111" => --ret--
                             main_MEM_flages(3) <= '1'; --StackRead
+                            main_branch_exec(0) <= '1';
                         when "1000" => --int--
                             main_micro_inst <= "11000";
                             main_Stall <= '1';
@@ -336,11 +383,24 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
     end Process;
 
     ------------------------------------------------------------------
+    -- Output multiplexing: microcode overrides main decoder, memory stall is independent
+    ------------------------------------------------------------------
     FD_enable  <= micro_FD_enable  when micro_active = '1' else main_FD_enable;
     DE_enable  <= micro_DE_enable  when micro_active = '1' else main_DE_enable;
     EM_enable  <= micro_EM_enable  when micro_active = '1' else main_EM_enable;
     MW_enable  <= micro_MW_enable  when micro_active = '1' else main_MW_enable;
-    Stall      <= micro_Stall      when micro_active = '1' else main_Stall;
+    
+    -- Stall when Execute stage signals memory will be used (structural hazard in von Neumann architecture)
+    -- or when microcode requires stall, or main decoder requires stall
+    Stall      <= '1' when (micro_active = '1' and micro_Stall = '1') or mem_will_be_used = '1'
+                      else main_Stall;
+    
+    -- Predict if current instruction will use memory (send to Execute for feedback loop)
+    mem_usage_predict <= '1' when (micro_active = '1' and (micro_MEM_flages(2) = '1' or micro_MEM_flages(3) = '1' or micro_MEM_flages(4) = '1' or micro_MEM_flages(5) = '1'
+                                                        or micro_MEM_flages(1)='1'or micro_MEM_flages(0)='1' ) )or
+                                   (micro_active = '0' and (main_MEM_flages(2) = '1' or main_MEM_flages(3) = '1' or main_MEM_flages(4) = '1' or main_MEM_flages(5) = '1' or main_MEM_flages(1)='1'or main_MEM_flages(0)='1' ) )
+                         else '0';
+    
     ID_flush   <= micro_ID_flush   when micro_active = '1' else main_ID_flush;
     Branch_Decode <= micro_Branch_Decode when micro_active = '1' else main_Branch_Decode;
     CSwap      <= micro_CSwap      when micro_active = '1' else main_CSwap;
@@ -351,4 +411,7 @@ Main_comb :  Process(op_code,data_ready,inturrupt)
     EXE_flages <= micro_EXE_flages when micro_active = '1' else main_EXE_flages;
     MEM_flages <= micro_MEM_flages when micro_active = '1' else main_MEM_flages;
     IO_flages  <= micro_IO_flages  when micro_active = '1' else main_IO_flages;
+    Branch_Exec <= micro_Branch_Exec when micro_active = '1' else main_Branch_Exec;
+    CCR_enable <= micro_CCR_enable when micro_active = '1' else main_CCR_enable;
+    Imm_predict <= '1' when start_immediate_req = '1' else '0';
 end architecture behavior;
