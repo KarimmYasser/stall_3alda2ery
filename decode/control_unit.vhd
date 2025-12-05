@@ -212,6 +212,7 @@ architecture behavior of Control_Unit is
                             micro_next<= M_IMMEDIATE;
                             micro_EM_enable <= '0';
                             micro_Micro_inst <= "00000";
+                            micro_DE_enable <= '0';
                         else 
                             micro_next<= M_IDLE;
                             micro_EM_enable <= '1';

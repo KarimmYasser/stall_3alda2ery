@@ -6,7 +6,7 @@ vlib work
 
 # Compile the design files
 vcom -93 -work work control_unit.vhd
-vcom -93 -work work control_unit_tb.vhd
+vcom -93 -work work testbench/control_unit_tb.vhd
 
 # Start simulation
 vsim -t 1ns work.control_unit_tb
@@ -62,4 +62,4 @@ run 2000 ns
 wave zoom full
 
 # Print completion message
-echo "Simulation completed. Check the wave window and transcript for results."
+echo "Control Unit testbench simulation completed."
