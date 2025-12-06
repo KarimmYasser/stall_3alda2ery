@@ -94,12 +94,18 @@ if [ "$CLEAN" = true ]; then
     rm -rf work-obj08.cf *.cf
 fi
 
-# Find VHDL files
+# Find VHDL files - packages first, then others (for correct dependency order)
 if [ "$RECURSIVE" = true ]; then
-    VHD_FILES=$(find . -name "*.vhd" -type f 2>/dev/null | sort)
+    PKG_FILES=$(find . -name "*_pkg.vhd" -type f 2>/dev/null | sort)
+    OTHER_FILES=$(find . -name "*.vhd" ! -name "*_pkg.vhd" -type f 2>/dev/null | sort)
 else
-    VHD_FILES=$(find . -maxdepth 1 -name "*.vhd" -type f 2>/dev/null | sort)
+    PKG_FILES=$(find . -maxdepth 1 -name "*_pkg.vhd" -type f 2>/dev/null | sort)
+    OTHER_FILES=$(find . -maxdepth 1 -name "*.vhd" ! -name "*_pkg.vhd" -type f 2>/dev/null | sort)
 fi
+
+# Combine: packages first, then other files
+VHD_FILES="$PKG_FILES $OTHER_FILES"
+VHD_FILES=$(echo "$VHD_FILES" | tr ' ' '\n' | grep -v '^$')
 
 if [ -z "$VHD_FILES" ]; then
     printf "%sNo .vhd files found%s\n" "$YELLOW" "$NC"
@@ -109,6 +115,10 @@ fi
 # Count files
 FILE_COUNT=$(echo "$VHD_FILES" | wc -l)
 printf "%sFound %s VHDL file(s) to compile%s\n" "$GREEN" "$FILE_COUNT" "$NC"
+if [ -n "$PKG_FILES" ]; then
+    PKG_COUNT=$(echo "$PKG_FILES" | wc -w)
+    printf "%s(Compiling %s package(s) first)%s\n" "$YELLOW" "$PKG_COUNT" "$NC"
+fi
 echo ""
 
 # Compile each file
