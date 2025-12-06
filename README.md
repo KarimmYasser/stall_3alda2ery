@@ -43,7 +43,7 @@ Design and implement a fully functional 5-stage pipelined processor that:
 | ------------------------ | ------------- | --------------------------------------------- |
 | **Architecture**         | Von Neumann   | Unified memory for instructions and data      |
 | **Word Size**            | 32-bit        | All registers and data buses are 32-bit wide  |
-| **Memory Size**          | 1 MB          | 2^20 addressable locations, 32-bit width each |
+| **Memory Size**          | 1 MB          | 2^18 addressable locations, 32-bit width each |
 | **Data Bus Width**       | 32-bit        | Memory and register data interface            |
 | **General Registers**    | 8 × 32-bit    | R0, R1, R2, R3, R4, R5, R6, R7                |
 | **Program Counter (PC)** | 32-bit        | Points to next instruction address            |
@@ -588,4 +588,5 @@ vsim -do run_fetch_tb.do
 - DO files have been updated to reference new paths
 - Top-level processor connects Fetch, IF/ID register, and Control Unit
 - Ready for integration of remaining pipeline stages
+
 
