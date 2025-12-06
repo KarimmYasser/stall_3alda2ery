@@ -33,7 +33,7 @@ architecture Behavior of Fetch is
             clk : in std_logic;
             pc_in : in std_logic_vector(31 downto 0);
             pc_out : out std_logic_vector(31 downto 0);
-            pc_enable : in std_logic;
+            pc_enable : in std_logic
         );
     end component PC;
     signal pc_next : std_logic_vector(31 downto 0);

@@ -49,13 +49,14 @@ architecture testbench of top_level_processor_tb is
     -- Simple instruction memory (32 instructions)
     type memory_array is array (0 to 31) of std_logic_vector(31 downto 0);
     signal instruction_memory : memory_array := (
-        0  => "00000" & "000" & "000" & "000" & "0000000000000000",  -- NOP
-        1  => "00101" & "001" & "000" & "000" & "0000000000000101",  -- LDM R1, 5
-        2  => "00101" & "010" & "000" & "000" & "0000000000001010",  -- LDM R2, 10
-        3  => "01001" & "011" & "001" & "010" & "0000000000000000",  -- ADD R3, R1, R2
-        4  => "00110" & "100" & "011" & "000" & "0000000000000000",  -- MOV R4, R3
-        5  => "10000" & "100" & "000" & "000" & "0000000000000000",  -- OUT R4
-        6  => "00001" & "000" & "000" & "000" & "0000000000000000",  -- HLT
+        -- Format: Opcode(5) | Index(3) | Unused(15) | Rd(3) | Rs1(3) | Rs2(3) = 32 bits
+        0  => std_logic_vector'(x"00000000"),  -- NOP:      opcode=00000
+        1  => std_logic_vector'(x"29000005"),  -- LDM R1,5: opcode=00101, Rd=001, Imm=5
+        2  => std_logic_vector'(x"2A00000A"),  -- LDM R2,10: opcode=00101, Rd=010, Imm=10
+        3  => std_logic_vector'(x"4B280000"),  -- ADD R3,R1,R2: opcode=01001, Rd=011, Rs1=001, Rs2=010
+        4  => std_logic_vector'(x"34600000"),  -- MOV R4,R3: opcode=00110, Rd=100, Rs1=011
+        5  => std_logic_vector'(x"84000000"),  -- OUT R4: opcode=10000, Rs1=100
+        6  => std_logic_vector'(x"08000000"),  -- HLT: opcode=00001
         others => (others => '0')
     );
     

@@ -77,22 +77,22 @@ architecture testbench of tb_decode is
     procedure log_outputs(
         constant inst_name : in string;
         constant opcode : in std_logic_vector(4 downto 0);
-        signal instruction : in std_logic_vector(31 downto 0);
-        signal FD_enable : in std_logic;
-        signal Stall : in std_logic;
-        signal DE_enable : in std_logic;
-        signal EM_enable : in std_logic;
-        signal MW_enable : in std_logic;
-        signal Branch_Decode : in std_logic;
-        signal WB_flages : in std_logic_vector(2 downto 0);
-        signal EXE_flages : in std_logic_vector(4 downto 0);
-        signal MEM_flages : in std_logic_vector(6 downto 0);
-        signal IO_flages : in std_logic_vector(1 downto 0);
-        signal Branch_Exec : in std_logic_vector(3 downto 0);
-        signal index : in std_logic_vector(2 downto 0);
-        signal rd_addr : in std_logic_vector(2 downto 0);
-        signal rs1_addr : in std_logic_vector(2 downto 0);
-        signal rs2_addr : in std_logic_vector(2 downto 0)
+        signal p_instruction : in std_logic_vector(31 downto 0);
+        signal p_fd_enable : in std_logic;
+        signal p_stall : in std_logic;
+        signal p_de_enable : in std_logic;
+        signal p_em_enable : in std_logic;
+        signal p_mw_enable : in std_logic;
+        signal p_branch_decode : in std_logic;
+        signal p_wb_flages : in std_logic_vector(2 downto 0);
+        signal p_exe_flages : in std_logic_vector(4 downto 0);
+        signal p_mem_flages : in std_logic_vector(6 downto 0);
+        signal p_io_flages : in std_logic_vector(1 downto 0);
+        signal p_branch_exec : in std_logic_vector(3 downto 0);
+        signal p_index : in std_logic_vector(2 downto 0);
+        signal p_rd_addr : in std_logic_vector(2 downto 0);
+        signal p_rs1_addr : in std_logic_vector(2 downto 0);
+        signal p_rs2_addr : in std_logic_vector(2 downto 0)
     ) is
         variable l : line;
     begin
@@ -104,62 +104,62 @@ architecture testbench of tb_decode is
         write(l, opcode);
         writeline(output, l);
         write(l, string'("Full Instruction: "));
-        hwrite(l, instruction);
+        hwrite(l, p_instruction);
         writeline(output, l);
         write(l, string'("----------------------------------------"));
         writeline(output, l);
         write(l, string'("Pipeline Control Signals:"));
         writeline(output, l);
-        write(l, string'("  FD_enable    : ") & std_logic'image(FD_enable));
+        write(l, string'("  FD_enable    : ") & std_logic'image(p_fd_enable));
         writeline(output, l);
-        write(l, string'("  DE_enable    : ") & std_logic'image(DE_enable));
+        write(l, string'("  DE_enable    : ") & std_logic'image(p_de_enable));
         writeline(output, l);
-        write(l, string'("  EM_enable    : ") & std_logic'image(EM_enable));
+        write(l, string'("  EM_enable    : ") & std_logic'image(p_em_enable));
         writeline(output, l);
-        write(l, string'("  MW_enable    : ") & std_logic'image(MW_enable));
+        write(l, string'("  MW_enable    : ") & std_logic'image(p_mw_enable));
         writeline(output, l);
-        write(l, string'("  Stall        : ") & std_logic'image(Stall));
+        write(l, string'("  Stall        : ") & std_logic'image(p_stall));
         writeline(output, l);
-        write(l, string'("  Branch_Decode: ") & std_logic'image(Branch_Decode));
+        write(l, string'("  Branch_Decode: ") & std_logic'image(p_branch_decode));
         writeline(output, l);
         write(l, string'("----------------------------------------"));
         writeline(output, l);
         write(l, string'("Register Addresses:"));
         writeline(output, l);
         write(l, string'("  rd  [8:6]  : "));
-        write(l, rd_addr);
+        write(l, p_rd_addr);
         writeline(output, l);
         write(l, string'("  rs1 [5:3]  : "));
-        write(l, rs1_addr);
+        write(l, p_rs1_addr);
         writeline(output, l);
         write(l, string'("  rs2 [2:0]  : "));
-        write(l, rs2_addr);
+        write(l, p_rs2_addr);
         writeline(output, l);
         write(l, string'("  index[26:24]: "));
-        write(l, index);
+        write(l, p_index);
         writeline(output, l);
         write(l, string'("----------------------------------------"));
         writeline(output, l);
         write(l, string'("Control Flags:"));
         writeline(output, l);
         write(l, string'("  WB_flages [2:0]  : "));
-        write(l, WB_flages);
+        write(l, p_wb_flages);
         write(l, string'(" (PC+1,MemtoReg,RegWrite)"));
         writeline(output, l);
         write(l, string'("  EXE_flages[4:0]  : "));
-        write(l, EXE_flages);
+        write(l, p_exe_flages);
         write(l, string'(" (ALUOp[4:2],ALUSrc,Index)"));
         writeline(output, l);
         write(l, string'("  MEM_flages[6:0]  : "));
-        write(l, MEM_flages);
+        write(l, p_mem_flages);
         write(l, string'(" (WDsel,MEMRd,MEMWr,StkRd,StkWr,CCRLd,CCRSt)"));
         writeline(output, l);
         write(l, string'("  IO_flages [1:0]  : "));
-        write(l, IO_flages);
+        write(l, p_io_flages);
         write(l, string'(" (Input,Output)"));
         writeline(output, l);
         write(l, string'("  Branch_Exec[3:0]: "));
-        write(l, Branch_Exec);
+        write(l, p_branch_exec);
         write(l, string'(" (sel1,sel0,imm,branch)"));
         writeline(output, l);
         write(l, string'("========================================"));
@@ -171,7 +171,7 @@ architecture testbench of tb_decode is
     -- Procedure to create instruction
     function make_instruction(
         opcode : std_logic_vector(4 downto 0);
-        index  : std_logic_vector(2 downto 0);
+        p_index  : std_logic_vector(2 downto 0);
         rd     : std_logic_vector(2 downto 0);
         rs1    : std_logic_vector(2 downto 0);
         rs2    : std_logic_vector(2 downto 0)
@@ -180,7 +180,7 @@ architecture testbench of tb_decode is
     begin
         inst := (others => '0');
         inst(31 downto 27) := opcode;  -- opcode
-        inst(26 downto 24) := index;   -- index
+        inst(26 downto 24) := p_index;   -- index
         inst(8 downto 6)   := rd;      -- rd
         inst(5 downto 3)   := rs1;     -- rs1
         inst(2 downto 0)   := rs2;     -- rs2

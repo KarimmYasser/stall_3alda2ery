@@ -76,7 +76,7 @@ architecture testbench of tb_decode_aggressive is
     -- Helper function to create instruction
     function make_instruction(
         opcode : std_logic_vector(4 downto 0);
-        index  : std_logic_vector(2 downto 0);
+        p_index  : std_logic_vector(2 downto 0);
         rd     : std_logic_vector(2 downto 0);
         rs1    : std_logic_vector(2 downto 0);
         rs2    : std_logic_vector(2 downto 0)
@@ -85,7 +85,7 @@ architecture testbench of tb_decode_aggressive is
     begin
         inst := (others => '0');
         inst(31 downto 27) := opcode;
-        inst(26 downto 24) := index;
+        inst(26 downto 24) := p_index;
         inst(8 downto 6)   := rd;
         inst(5 downto 3)   := rs1;
         inst(2 downto 0)   := rs2;
@@ -96,14 +96,14 @@ architecture testbench of tb_decode_aggressive is
     procedure log_cycle_state(
         constant cycle_num : in integer;
         constant test_name : in string;
-        signal instruction : in std_logic_vector(31 downto 0);
-        signal FD_enable : in std_logic;
-        signal Stall : in std_logic;
-        signal DE_enable : in std_logic;
-        signal EM_enable : in std_logic;
-        signal MW_enable : in std_logic;
-        signal MEM_flages : in std_logic_vector(6 downto 0);
-        signal inturrupt : in std_logic
+        signal p_instruction : in std_logic_vector(31 downto 0);
+        signal p_fd_enable : in std_logic;
+        signal p_stall : in std_logic;
+        signal p_de_enable : in std_logic;
+        signal p_em_enable : in std_logic;
+        signal p_mw_enable : in std_logic;
+        signal p_mem_flages : in std_logic_vector(6 downto 0);
+        signal p_inturrupt : in std_logic
     ) is
         variable l : line;
     begin
@@ -112,31 +112,31 @@ architecture testbench of tb_decode_aggressive is
         write(l, string'(" [") & test_name & string'("]"));
         writeline(output, l);
         write(l, string'("  Instruction: "));
-        hwrite(l, instruction);
+        hwrite(l, p_instruction);
         write(l, string'(" | Opcode: "));
-        write(l, instruction(31 downto 27));
+        write(l, p_instruction(31 downto 27));
         writeline(output, l);
         write(l, string'("  Pipeline: FD="));
-        write(l, FD_enable);
+        write(l, p_fd_enable);
         write(l, string'(" DE="));
-        write(l, DE_enable);
+        write(l, p_de_enable);
         write(l, string'(" EM="));
-        write(l, EM_enable);
+        write(l, p_em_enable);
         write(l, string'(" MW="));
-        write(l, MW_enable);
+        write(l, p_mw_enable);
         write(l, string'(" STALL="));
-        write(l, Stall);
+        write(l, p_stall);
         writeline(output, l);
         write(l, string'("  MEM: StkW="));
-        write(l, MEM_flages(2));
+        write(l, p_mem_flages(2));
         write(l, string'(" StkR="));
-        write(l, MEM_flages(3));
+        write(l, p_mem_flages(3));
         write(l, string'(" MemW="));
-        write(l, MEM_flages(4));
+        write(l, p_mem_flages(4));
         write(l, string'(" MemR="));
-        write(l, MEM_flages(5));
+        write(l, p_mem_flages(5));
         write(l, string'(" | INT="));
-        write(l, inturrupt);
+        write(l, p_inturrupt);
         writeline(output, l);
         write(l, string'(""));
         writeline(output, l);

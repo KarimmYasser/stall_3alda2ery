@@ -106,7 +106,7 @@ architecture testbench of tb_fetch_decode_full is
     -- Helper function to create instruction
     function make_instruction(
         opcode : std_logic_vector(4 downto 0);
-        index  : std_logic_vector(2 downto 0);
+        p_index  : std_logic_vector(2 downto 0);
         rd     : std_logic_vector(2 downto 0);
         rs1    : std_logic_vector(2 downto 0);
         rs2    : std_logic_vector(2 downto 0)
@@ -115,7 +115,7 @@ architecture testbench of tb_fetch_decode_full is
     begin
         inst := (others => '0');
         inst(31 downto 27) := opcode;
-        inst(26 downto 24) := index;
+        inst(26 downto 24) := p_index;
         inst(8 downto 6)   := rd;
         inst(5 downto 3)   := rs1;
         inst(2 downto 0)   := rs2;
