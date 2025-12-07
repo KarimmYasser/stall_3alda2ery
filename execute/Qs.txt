@@ -1,0 +1,8 @@
+mem 6 bits or 7
+order of bits in prev reg
+num of each stage bits
+what is the ccr to cu signal
+will there be conflict between alu and ccr assignment between two insts
+from where does setc come
+
+

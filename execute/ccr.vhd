@@ -1,32 +1,49 @@
-LIBRARY IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.NUMERIC_STD.ALL;
+-- Condition Code Register (CCR)
+-- Flags: [2]=Carry, [1]=Negative, [0]=Zero
 
-entity CCR is
-    PORT (
-        -- Inputs
-        CCR_In  : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);  -- [2]=C, [1]=N, [0]=Z
-        
-        -- Control signals
-        Load_CCR     : IN  STD_LOGIC;  -- '1' = Load flags from inputs
-        
-        -- Outputs
-        CCR_Out  : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)  -- [2]=C, [1]=N, [0]=Z
-    );
-END ENTITY CCR;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
 
-ARCHITECTURE Behavioral OF CCR IS
-    -- Internal signal to hold the flags
-    SIGNAL CCR_Reg  : STD_LOGIC_VECTOR(2 DOWNTO 0) := "000";
-BEGIN
-    -- Process to load flags into CCR
-    PROCESS (Load_CCR, CCR_In)
-    BEGIN
-        IF Load_CCR = '1' THEN
-            CCR_Reg <= CCR_In;
-        END IF;
-    END PROCESS;
+entity ccr is
+  port (
+    rst : in std_logic;                              -- Reset signal
+    clk : in std_logic;                              -- Clock signal
+    set_carry : in std_logic;                        -- Set carry flag to '1'
+    rti_signal : in std_logic;                       -- Return from interrupt signal
+    flags_in_rti : in std_logic_vector(2 downto 0);  -- Flags to restore on RTI
+    flags_enable_from_alu : in std_logic_vector(2 downto 0); -- ALU flag update enables
+    flags_from_alu : in std_logic_vector(2 downto 0);        -- ALU flag values
+    flags_out : out std_logic_vector(2 downto 0)     -- Current flag values
+  );
+end entity ccr;
 
-    -- Assign internal flags to outputs
-    CCR_Out <= CCR_Reg;
-END ARCHITECTURE Behavioral;
+architecture behavioral of ccr is
+  signal flags : std_logic_vector(2 downto 0); -- Internal flag register
+begin
+  process(clk, rst)
+  begin
+    if rst = '1' then
+      flags <= (others => '0');
+    elsif rising_edge(clk) then
+      if (rti_signal = '1') then
+        flags <= flags_in_rti;
+      end if;
+      if (flags_enable_from_alu(0) = '1') then
+        flags(0) <= flags_from_alu(0);
+      end if;
+      if (flags_enable_from_alu(1) = '1') then
+        flags(1) <= flags_from_alu(1);
+      end if;
+      if (flags_enable_from_alu(2) = '1') then
+        flags(2) <= flags_from_alu(2);
+      end if;
+      if (set_carry = '1') then
+        flags(2) <= '1';
+      end if;
+    end if;
+  end process;
+  
+  flags_out <= flags;
+end architecture behavioral;
