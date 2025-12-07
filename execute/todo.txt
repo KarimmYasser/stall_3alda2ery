@@ -1,5 +1,0 @@
-- swap signal in for unit -> does it need to be proped to mem stage and enter the for unit from there
-- ALU & ALU Controller
-- CCR signal back to CU
-- 
-
