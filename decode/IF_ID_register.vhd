@@ -6,6 +6,7 @@ entity IF_ID_register is
     port(
         -- Control signals
         clk : in std_logic;
+        reset : in std_logic;           -- Asynchronous reset
         write_enable : in std_logic;  -- From Control Unit FD_enable
         flush : in std_logic;          -- From Control Unit ID_flush
         
@@ -61,6 +62,7 @@ begin
         )
         port map (
             clk          => clk,
+            reset        => reset,
             write_enable => effective_write_enable,
             data_in      => pc_data_in,
             data_out     => pc_out
@@ -74,6 +76,7 @@ begin
         )
         port map (
             clk          => clk,
+            reset        => reset,
             write_enable => effective_write_enable,
             data_in      => instruction_data_in,
             data_out     => instruction_out
@@ -87,6 +90,7 @@ begin
         )
         port map (
             clk          => clk,
+            reset        => reset,
             write_enable => effective_write_enable,
             data_in      => opcode_data_in,
             data_out     => opcode_out
