@@ -32,7 +32,7 @@ architecture testbench of tb_decode_aggressive is
             Branch_Exec_pipe_out: out std_logic_vector(3 downto 0);
             Rrs1_pipe_out: out std_logic_vector(31 downto 0);
             Rrs2_pipe_out: out std_logic_vector(31 downto 0);
-            index_pipe_out: out std_logic_vector(2 downto 0);
+            index_pipe_out: out std_logic_vector(1 downto 0);  -- 2 bits
             pc_pipe_out: out std_logic_vector(31 downto 0);
             rs1_addr_pipe_out: out std_logic_vector(2 downto 0);
             rs2_addr_pipe_out: out std_logic_vector(2 downto 0);
@@ -63,7 +63,7 @@ architecture testbench of tb_decode_aggressive is
     signal Branch_Exec : std_logic_vector(3 downto 0);
     signal Rrs1 : std_logic_vector(31 downto 0);
     signal Rrs2 : std_logic_vector(31 downto 0);
-    signal index : std_logic_vector(2 downto 0);
+    signal index : std_logic_vector(1 downto 0);  -- 2 bits
     signal pc_out : std_logic_vector(31 downto 0);
     signal rs1_addr : std_logic_vector(2 downto 0);
     signal rs2_addr : std_logic_vector(2 downto 0);
@@ -76,7 +76,7 @@ architecture testbench of tb_decode_aggressive is
     -- Helper function to create instruction
     function make_instruction(
         opcode : std_logic_vector(4 downto 0);
-        index  : std_logic_vector(2 downto 0);
+        index  : std_logic_vector(1 downto 0);  -- Changed to 2 bits
         rd     : std_logic_vector(2 downto 0);
         rs1    : std_logic_vector(2 downto 0);
         rs2    : std_logic_vector(2 downto 0)
@@ -85,7 +85,7 @@ architecture testbench of tb_decode_aggressive is
     begin
         inst := (others => '0');
         inst(31 downto 27) := opcode;
-        inst(26 downto 24) := index;
+        inst(26 downto 25) := index;  -- 2 bits [26:25]
         inst(8 downto 6)   := rd;
         inst(5 downto 3)   := rs1;
         inst(2 downto 0)   := rs2;
@@ -103,7 +103,10 @@ architecture testbench of tb_decode_aggressive is
         signal EM_enable : in std_logic;
         signal MW_enable : in std_logic;
         signal MEM_flages : in std_logic_vector(6 downto 0);
-        signal inturrupt : in std_logic
+        signal inturrupt : in std_logic;
+        signal Micro_inst : in std_logic_vector(4 downto 0);
+        signal WB_flages : in std_logic_vector(2 downto 0);
+        signal Branch_Exec : in std_logic_vector(3 downto 0)
     ) is
         variable l : line;
     begin
@@ -115,6 +118,8 @@ architecture testbench of tb_decode_aggressive is
         hwrite(l, instruction);
         write(l, string'(" | Opcode: "));
         write(l, instruction(31 downto 27));
+        write(l, string'(" | Micro: "));
+        write(l, Micro_inst);
         writeline(output, l);
         write(l, string'("  Pipeline: FD="));
         write(l, FD_enable);
@@ -126,17 +131,37 @@ architecture testbench of tb_decode_aggressive is
         write(l, MW_enable);
         write(l, string'(" STALL="));
         write(l, Stall);
+        write(l, string'(" INT="));
+        write(l, inturrupt);
         writeline(output, l);
-        write(l, string'("  MEM: StkW="));
-        write(l, MEM_flages(2));
-        write(l, string'(" StkR="));
-        write(l, MEM_flages(3));
-        write(l, string'(" MemW="));
-        write(l, MEM_flages(4));
+        write(l, string'("  WB: RegW="));
+        write(l, WB_flages(2));
+        write(l, string'(" MemToReg="));
+        write(l, WB_flages(1));
+        write(l, string'(" PC+="));
+        write(l, WB_flages(0));
+        writeline(output, l);
+        write(l, string'("  MEM: WDsel="));
+        write(l, MEM_flages(6));
         write(l, string'(" MemR="));
         write(l, MEM_flages(5));
-        write(l, string'(" | INT="));
-        write(l, inturrupt);
+        write(l, string'(" MemW="));
+        write(l, MEM_flages(4));
+        write(l, string'(" StkR="));
+        write(l, MEM_flages(3));
+        write(l, string'(" StkW="));
+        write(l, MEM_flages(2));
+        write(l, string'(" CCRSt="));
+        write(l, MEM_flages(1));
+        write(l, string'(" CCRLd="));
+        write(l, MEM_flages(0));
+        writeline(output, l);
+        write(l, string'("  Branch: En="));
+        write(l, Branch_Exec(0));
+        write(l, string'(" Imm="));
+        write(l, Branch_Exec(1));
+        write(l, string'(" Sel="));
+        write(l, Branch_Exec(3 downto 2));
         writeline(output, l);
         write(l, string'(""));
         writeline(output, l);
@@ -209,131 +234,128 @@ begin
         reset <= '0';
         wait until rising_edge(clk);
         
-        -- TEST 1: Multi-cycle SWAP instruction - observe all cycles
+        -- TEST 1: Multi-cycle SWAP instruction
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         write(l, string'("TEST 1: SWAP Instruction (Multi-Cycle - 2 cycles)"));
         writeline(output, l);
-        write(l, string'("Expected: Stall should be asserted for 2 cycles"));
+        write(l, string'("Expected: Stall asserted, CSwap toggles, no forwarding during SWAP"));
         writeline(output, l);
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("00111", "000", "001", "010", "011"); -- SWAP
+        instruction <= make_instruction("00111", "00", "001", "010", "011"); -- SWAP with 2-bit index
         cycle_count := 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "SWAP-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "SWAP-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "SWAP-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "SWAP-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "SWAP-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "SWAP-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        -- TEST 2: Try to issue new instruction immediately after SWAP
+        -- TEST 2: ADD after SWAP
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
-        write(l, string'("TEST 2: Issue ADD immediately after SWAP completes"));
-        writeline(output, l);
-        write(l, string'("Expected: ADD should proceed normally, no stall"));
-        writeline(output, l);
-        write(l, string'("--------------------------------------------------------------------------------"));
-        writeline(output, l);
-        
-        instruction <= make_instruction("01001", "000", "100", "001", "010"); -- ADD
-        cycle_count := cycle_count + 1;
-        wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
-        
-        -- TEST 3: Interrupt during SWAP execution
-        write(l, string'("--------------------------------------------------------------------------------"));
-        writeline(output, l);
-        write(l, string'("TEST 3: Interrupt occurs DURING SWAP execution"));
-        writeline(output, l);
-        write(l, string'("Expected: SWAP continues, then interrupt serviced (3 cycles)"));
+        write(l, string'("TEST 2: ADD after SWAP (verify forwarding re-enabled)"));
         writeline(output, l);
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("00111", "000", "011", "100", "101"); -- SWAP
+        instruction <= make_instruction("01001", "00", "100", "001", "010"); -- ADD
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "SWAP-INT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        -- Assert interrupt during SWAP
+        -- TEST 3: Interrupt during SWAP
+        write(l, string'("--------------------------------------------------------------------------------"));
+        writeline(output, l);
+        write(l, string'("TEST 3: Interrupt during SWAP execution"));
+        writeline(output, l);
+        write(l, string'("Expected: SWAP completes, then 3-cycle interrupt sequence"));
+        writeline(output, l);
+        write(l, string'("--------------------------------------------------------------------------------"));
+        writeline(output, l);
+        
+        instruction <= make_instruction("00111", "00", "011", "100", "101"); -- SWAP
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "SWAP-INT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
+        
         inturrupt <= '1';
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "SWAP-INT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "SWAP-INT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         inturrupt <= '0';
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "POST-INT", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "POST-INT", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        -- TEST 4: INT instruction (software interrupt - 3 cycles)
+        -- TEST 4: INT instruction
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         write(l, string'("TEST 4: INT Instruction (Software Interrupt - 3 cycles)"));
         writeline(output, l);
-        write(l, string'("Expected: 3 cycle execution with PC and CCR saved"));
+        write(l, string'("Expected: PC+1 saved, CCR stored, vector read, branch taken"));
         writeline(output, l);
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("11000", "000", "000", "001", "010"); -- INT
+        instruction <= make_instruction("11000", "00", "000", "001", "010"); -- INT
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-INST-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-INST-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-INST-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-INST-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-INST-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-INST-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "INT-INST-C4", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "INT-INST-C4", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        -- TEST 5: RTI instruction (return from interrupt - 2 cycles)
+        -- TEST 5: RTI instruction
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         write(l, string'("TEST 5: RTI Instruction (Return from Interrupt - 2 cycles)"));
         writeline(output, l);
-        write(l, string'("Expected: 2 cycle execution with CCR and PC restored"));
+        write(l, string'("Expected: CCR restored, PC popped from stack, branch taken"));
         writeline(output, l);
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("11001", "000", "000", "001", "010"); -- RTI
+        instruction <= make_instruction("11001", "00", "000", "001", "010"); -- RTI
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RTI-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RTI-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RTI-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RTI-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RTI-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RTI-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 6: Memory instruction sequence - test structural hazard (von Neumann)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -345,24 +367,24 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("10100", "001", "010", "011", "000"); -- LDD (memory read)
+        instruction <= make_instruction("10100", "01", "010", "011", "000"); -- LDD (memory read)
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "LDD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "LDD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "LDD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- Issue next instruction
-        instruction <= make_instruction("01001", "000", "100", "010", "011"); -- ADD
+        instruction <= make_instruction("01001", "00", "100", "010", "011"); -- ADD
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "POST-LDD-ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "POST-LDD-ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 7: PUSH-POP sequence (stack operations)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -374,31 +396,31 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("10010", "000", "000", "001", "010"); -- PUSH
+        instruction <= make_instruction("10010", "00", "000", "001", "010"); -- PUSH
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "PUSH-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "PUSH-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "PUSH-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "PUSH-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "PUSH-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "PUSH-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        instruction <= make_instruction("10011", "000", "001", "010", "011"); -- POP
+        instruction <= make_instruction("10011", "00", "001", "010", "011"); -- POP
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "POP-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
-        
-        cycle_count := cycle_count + 1;
-        wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "POP-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "POP-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "POP-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "POP-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POP-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 8: STD followed by LDD (memory write then read)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -410,31 +432,31 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("10101", "010", "011", "100", "101"); -- STD
+        instruction <= make_instruction("10101", "10", "011", "100", "101"); -- STD
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "STD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "STD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "STD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "STD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "STD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "STD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        instruction <= make_instruction("10100", "011", "100", "101", "110"); -- LDD
+        instruction <= make_instruction("10100", "11", "100", "101", "110"); -- LDD
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-AFTER-STD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
-        
-        cycle_count := cycle_count + 1;
-        wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-AFTER-STD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "LDD-AFTER-STD-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "LDD-AFTER-STD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "LDD-AFTER-STD-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "LDD-AFTER-STD-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 9: CALL instruction (multi-cycle with branch)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -446,22 +468,22 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("10110", "100", "101", "110", "111"); -- CALL
+        instruction <= make_instruction("10110", "00", "101", "110", "111"); -- CALL (changed from "100")
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "CALL-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "CALL-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "CALL-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "CALL-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "CALL-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "CALL-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "CALL-C4", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "CALL-C4", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 10: RET instruction (return with stack read)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -473,22 +495,18 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("10111", "101", "110", "111", "000"); -- RET
+        instruction <= make_instruction("10111", "01", "110", "111", "000"); -- RET (changed from "101")
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RET-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RET-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RET-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RET-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RET-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
-        
-        cycle_count := cycle_count + 1;
-        wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RET-C4", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RET-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 11: Rapid fire sequence - multiple single-cycle instructions
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -500,25 +518,25 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("01001", "000", "001", "010", "011"); -- ADD
+        instruction <= make_instruction("01001", "00", "001", "010", "011"); -- ADD
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RAPID-ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RAPID-ADD", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        instruction <= make_instruction("01010", "000", "010", "011", "100"); -- SUB
+        instruction <= make_instruction("01010", "00", "010", "011", "100"); -- SUB
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RAPID-SUB", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RAPID-SUB", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        instruction <= make_instruction("01011", "000", "011", "100", "101"); -- AND
+        instruction <= make_instruction("01011", "00", "011", "100", "101"); -- AND
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RAPID-AND", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RAPID-AND", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
-        instruction <= make_instruction("00100", "000", "100", "101", "110"); -- NOT
+        instruction <= make_instruction("00100", "00", "100", "101", "110"); -- NOT
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "RAPID-NOT", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "RAPID-NOT", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- TEST 12: HLT instruction (should stall indefinitely)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -530,18 +548,18 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        instruction <= make_instruction("00001", "000", "000", "000", "000"); -- HLT
+        instruction <= make_instruction("00001", "00", "000", "000", "000"); -- HLT
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "HLT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "HLT-C1", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "HLT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "HLT-C2", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
-        log_cycle_state(cycle_count, "HLT-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt);
+        log_cycle_state(cycle_count, "HLT-C3", instruction, FD_enable, Stall, DE_enable, EM_enable, MW_enable, MEM_flages, inturrupt, Micro_inst, WB_flages, Branch_Exec);
         
         -- Summary
         write(l, string'(""));
@@ -559,15 +577,15 @@ begin
         writeline(output, l);
         write(l, string'("KEY OBSERVATIONS TO CHECK:"));
         writeline(output, l);
-        write(l, string'("1. Multi-cycle instructions: SWAP(2), INT(3), RTI(2) complete correctly"));
+        write(l, string'("1. SWAP: ForwardEnable disabled during execution"));
         writeline(output, l);
-        write(l, string'("2. Memory instructions: PUSH, POP, LDD, STD cause stalls"));
+        write(l, string'("2. INT/RTI: Proper CCR and PC handling with branch signals"));
         writeline(output, l);
-        write(l, string'("3. Interrupts: Can occur during instruction, handled properly"));
+        write(l, string'("3. Memory ops: Correct mem_usage_predict and structural hazard detection"));
         writeline(output, l);
-        write(l, string'("4. Structural hazards: FD_enable should disable when memory busy"));
+        write(l, string'("4. Interrupts: Asynchronous interrupt handling preserved"));
         writeline(output, l);
-        write(l, string'("5. HLT: Should keep pipeline stalled indefinitely"));
+        write(l, string'("5. Branch_Exec: Proper branch signals for control flow changes"));
         writeline(output, l);
         write(l, string'("================================================================================"));
         writeline(output, l);

@@ -24,7 +24,9 @@ Entity Control_Unit is
         Branch_Exec: out std_logic_vector(3 downto 0); -- (3)sel1, (2)sel0, (1)imm, (0)branch
         CCR_enable : out std_logic;
         Imm_predict : out std_logic;
-        Imm_in_use: in std_logic
+        Imm_in_use: in std_logic;
+        ForwardEnable : out std_logic; --forward enable
+        Write_in_Src2: out std_logic  -- New signal to indicate writing in source 2 register
     );
 END entity Control_Unit;
 
@@ -58,6 +60,8 @@ architecture behavior of Control_Unit is
     signal micro_IO_flages  : std_logic_vector(1 downto 0) := (others => '0');
     signal micro_Branch_Exec : std_logic_vector(3 downto 0) := (others => '0');
     signal micro_CCR_enable : std_logic := '1';
+    signal micro_ForwardEnable : std_logic := '1';
+    signal micro_write_in_src2: std_logic := '0';
 
     ------------------------------------------------------------------
     -- Main (combinational) decoder signals
@@ -83,6 +87,8 @@ architecture behavior of Control_Unit is
     signal start_int_signal_req  : std_logic := '0';
     signal start_immediate_req : std_logic := '0';
     signal main_Imm_predict : std_logic := '0';
+    signal main_ForwardEnable : std_logic := '1';
+    signal main_write_in_src2: std_logic := '0';
     ------------------------------------------------------------------
     -- Final outputs are multiplexed between micro_ and main_
     ------------------------------------------------------------------
@@ -109,6 +115,7 @@ architecture behavior of Control_Unit is
                 micro_EM_enable  <= '1';
                 micro_MW_enable  <= '1';
                 micro_CCR_enable <= '1';
+                micro_forwardEnable <= '1';
                 micro_Stall      <= '0';
                 micro_ID_flush   <= '0';
                 micro_Branch_Decode <= '0';
@@ -119,6 +126,7 @@ architecture behavior of Control_Unit is
                 micro_MEM_flages <= (others => '0');
                 micro_IO_flages  <= (others => '0');
                 micro_Branch_Exec <= (others => '0');
+                micro_write_in_src2 <= '0';
                 
                 case micro_state is
                     when M_IDLE =>
@@ -141,7 +149,7 @@ architecture behavior of Control_Unit is
                         micro_next <= M_INT_Sig_2;
                     when M_INT_Sig_2 =>
                         -- Third cycle: read interrupt vector
-                        micro_Stall <= '1';
+                        micro_Stall <= '0';
                         micro_Micro_inst <= "00000";
                         micro_MEM_flages(5) <= '1'; --MEMRead
                         micro_next <= M_IDLE;
@@ -166,7 +174,7 @@ architecture behavior of Control_Unit is
                         micro_next <= M_INT_2;
                     when M_INT_2 =>
                         -- Third cycle: read interrupt vector with indexing
-                        micro_Stall <= '1';
+                        micro_Stall <= '0';
                         micro_Micro_inst <= "00000";
                         micro_MEM_flages(5) <= '1'; --MEMRead
                         micro_EXE_flages(1) <= '0'; --ALUSrc
@@ -185,10 +193,11 @@ architecture behavior of Control_Unit is
                         micro_next <= M_SWAP_1;
                     when M_SWAP_1 =>
                         -- Second cycle: perform swap (CSwap=1)
-                        micro_Stall <= '1';
+                        micro_Stall <= '0';
                         micro_WB_flages(2) <= '1'; --RegWrite
                         micro_CSwap <= '1';
                         micro_Micro_inst <= "00000";
+                        micro_write_in_src2 <= '1'; -- Indicate writing in source 2 register
                         micro_next <= M_IDLE;
                     
                     -- RTI Instruction Sequence
@@ -201,14 +210,14 @@ architecture behavior of Control_Unit is
                         micro_next <= M_RTI_1;
                     when M_RTI_1 =>
                         -- Second cycle: read from stack
-                        micro_Stall <= '1';
+                        micro_Stall <= '0';
                         micro_MEM_flages(3) <= '1'; --StackRead
                         micro_Micro_inst <= "00000";
                         micro_branch_exec(0) <= '1'; --branch
                         micro_next <= M_IDLE;
                     when M_IMMEDIATE =>
-                        -- Immediate handling state (if needed in future)
-                        if(micro_Stall='1' ) then
+                        -- Immediate handling state 
+                        if(micro_Stall ='1' ) then
                             micro_next<= M_IMMEDIATE;
                             micro_EM_enable <= '0';
                             micro_Micro_inst <= "00000";
@@ -230,7 +239,7 @@ architecture behavior of Control_Unit is
                             micro_next <= M_RTI_1;
                         elsif inturrupt = '1' then
                             micro_next <= M_INT_Sig_0;
-                        elsif Imm_in_use = '1'  then
+                        elsif start_immediate_req = '1'  then
                             micro_next <= M_IMMEDIATE;
                         else
                             micro_next <= M_IDLE;
@@ -248,6 +257,7 @@ Main_comb :  Process(op_code,data_ready)
             main_EM_enable  <= '1';
             main_MW_enable  <= '1';
             main_CCR_enable <= '1';
+            main_forwardEnable <= '1';
             main_Stall      <= '0';
             main_ID_flush   <= '0';
             main_Branch_Decode <= '0';
@@ -263,6 +273,7 @@ Main_comb :  Process(op_code,data_ready)
             start_rti_req  <= '0';
             start_int_signal_req  <= '0';
             start_immediate_req <= '0';
+            main_write_in_src2 <= '0';
                 if op_code(4) ='0' then
                     case op_code(3 downto 0) is
                         when "0000" => --noop--
@@ -290,6 +301,7 @@ Main_comb :  Process(op_code,data_ready)
                             main_Stall <= '1';
                             main_WB_flages(2) <= '1'; --RegWrite
                             main_CSwap <= '0';
+                            main_forwardEnable <= '0';
                             start_swap_req <= '1';
                         when "1000" => --IADD--
                             main_EXE_flages(4 downto 2) <= "010";
@@ -365,14 +377,12 @@ Main_comb :  Process(op_code,data_ready)
                             main_MEM_flages(3) <= '1'; --StackRead
                             main_branch_exec(0) <= '1';
                         when "1000" => --int--
-                            main_micro_inst <= "11000";
                             main_Stall <= '1';
                             main_MEM_flages(2) <= '1'; --StackWrite
                             main_MEM_flages(6) <= '1'; --WDselect
                             main_WB_flages(0) <= '1'; --Write to PC+1
                             start_int_req <= '1';
                         when "1001" => --rti--
-                            main_micro_inst <= "11001";
                             main_Stall <= '1';
                             main_MEM_flages(6) <= '1'; --WDselect
                             main_MEM_flages(1) <= '1'; --CCRLoad
@@ -415,4 +425,6 @@ Main_comb :  Process(op_code,data_ready)
     Branch_Exec <= micro_Branch_Exec when micro_active = '1' else main_Branch_Exec;
     CCR_enable <= micro_CCR_enable when micro_active = '1' else main_CCR_enable;
     Imm_predict <= '1' when start_immediate_req = '1' else '0';
+    ForwardEnable <= micro_ForwardEnable when micro_active = '1' else main_ForwardEnable;
+    Write_in_Src2 <= micro_write_in_src2 when micro_active = '1' else main_write_in_src2;
 end architecture behavior;
