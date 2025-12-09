@@ -1,96 +1,63 @@
-# Create work library if it doesn't exist
+# DO file to compile and simulate the Control Unit testbench
+# Run from: c:\Users\ASUS\Desktop\SWE_Ass\stall_3alda2ery\decode
+
+# Create work library
 if {[file exists work]} {
     vdel -lib work -all
 }
 vlib work
 
-# Compile the design files
+echo "========================================="
+echo "Compiling Control Unit Testbench"
+echo "========================================="
+
+# Compile control unit
+echo "Compiling control unit..."
 vcom -93 -work work control_unit.vhd
-vcom -93 -work work testbench/control_unit_tb.vhd
+
+# Compile testbench (from decode folder, not testbench subfolder)
+echo "Compiling testbench..."
+vcom -93 -work work control_unit_tb.vhd
+
+echo "========================================="
+echo "Starting Simulation"
+echo "========================================="
 
 # Start simulation
 vsim -t 1ns work.control_unit_tb
 
-# Add waves for all signals
-add wave -divider "Clock and Reset"
-add wave -color "Yellow" sim:/control_unit_tb/clk
+# Add waves
+add wave -divider "Clock and Control"
+add wave -color "Yellow" {sim:/control_unit_tb/clk}
+add wave -color "Red" {sim:/control_unit_tb/inturrupt}
+add wave -radix binary {sim:/control_unit_tb/op_code}
 
-# Add divider for inputs
-add wave -divider "Inputs"
-add wave -position insertpoint sim:/control_unit_tb/inturrupt
-add wave -position insertpoint -radix binary sim:/control_unit_tb/op_code
-add wave -position insertpoint sim:/control_unit_tb/data_ready
-add wave -position insertpoint sim:/control_unit_tb/mem_will_be_used
-add wave -position insertpoint sim:/control_unit_tb/Imm_in_use
+add wave -divider "Pipeline Control"
+add wave {sim:/control_unit_tb/FD_enable}
+add wave {sim:/control_unit_tb/DE_enable}
+add wave {sim:/control_unit_tb/EM_enable}
+add wave {sim:/control_unit_tb/MW_enable}
+add wave -color "Orange" {sim:/control_unit_tb/Stall}
 
-# Add divider for pipeline control outputs
-add wave -divider "Pipeline Control Outputs"
-add wave -color "Green" sim:/control_unit_tb/FD_enable
-add wave -color "Green" sim:/control_unit_tb/DE_enable
-add wave -color "Green" sim:/control_unit_tb/EM_enable
-add wave -color "Green" sim:/control_unit_tb/MW_enable
-add wave -color "Red" sim:/control_unit_tb/Stall
-add wave -color "Cyan" sim:/control_unit_tb/Branch_Decode
-add wave -color "Orange" sim:/control_unit_tb/ID_flush
-add wave -color "Magenta" sim:/control_unit_tb/CSwap
+add wave -divider "Branch and Flush"
+add wave {sim:/control_unit_tb/Branch_Decode}
+add wave {sim:/control_unit_tb/ID_flush}
+add wave {sim:/control_unit_tb/CSwap}
 
-# Add divider for new control signals
-add wave -divider "Additional Control Signals"
-add wave -position insertpoint sim:/control_unit_tb/CCR_enable
-add wave -position insertpoint sim:/control_unit_tb/ForwardEnable
-add wave -position insertpoint sim:/control_unit_tb/mem_usage_predict
-add wave -position insertpoint sim:/control_unit_tb/Imm_predict
+add wave -divider "Flags"
+add wave -radix binary {sim:/control_unit_tb/WB_flages}
+add wave -radix binary {sim:/control_unit_tb/EXE_flages}
+add wave -radix binary {sim:/control_unit_tb/MEM_flages}
+add wave -radix binary {sim:/control_unit_tb/IO_flages}
 
-# Add divider for flag outputs
-add wave -divider "Write-Back Flags"
-add wave -position insertpoint -radix binary sim:/control_unit_tb/WB_flages
-add wave -label "WB_RegWrite" sim:/control_unit_tb/WB_flages(2)
-add wave -label "WB_MemtoReg" sim:/control_unit_tb/WB_flages(1)
-add wave -label "WB_PC_select" sim:/control_unit_tb/WB_flages(0)
-
-add wave -divider "Execute Flags"
-add wave -position insertpoint -radix binary sim:/control_unit_tb/EXE_flages
-add wave -label "EXE_ALUOp_2" sim:/control_unit_tb/EXE_flages(4)
-add wave -label "EXE_ALUOp_1" sim:/control_unit_tb/EXE_flages(3)
-add wave -label "EXE_ALUOp_0" sim:/control_unit_tb/EXE_flages(2)
-add wave -label "EXE_ALUSrc" sim:/control_unit_tb/EXE_flages(1)
-add wave -label "EXE_Index" sim:/control_unit_tb/EXE_flages(0)
-
-add wave -divider "Memory Flags"
-add wave -position insertpoint -radix binary sim:/control_unit_tb/MEM_flages
-add wave -label "MEM_WDselect" sim:/control_unit_tb/MEM_flages(6)
-add wave -label "MEM_MEMRead" sim:/control_unit_tb/MEM_flages(5)
-add wave -label "MEM_MEMWrite" sim:/control_unit_tb/MEM_flages(4)
-add wave -label "MEM_StackRead" sim:/control_unit_tb/MEM_flages(3)
-add wave -label "MEM_StackWrite" sim:/control_unit_tb/MEM_flages(2)
-add wave -label "MEM_CCRStore" sim:/control_unit_tb/MEM_flages(1)
-add wave -label "MEM_CCRLoad" sim:/control_unit_tb/MEM_flages(0)
-
-add wave -divider "I/O and Branch Flags"
-add wave -position insertpoint -radix binary sim:/control_unit_tb/IO_flages
-add wave -label "IO_output" sim:/control_unit_tb/IO_flages(1)
-add wave -label "IO_input" sim:/control_unit_tb/IO_flages(0)
-
-add wave -position insertpoint -radix binary sim:/control_unit_tb/Branch_Exec
-add wave -label "Branch_sel1" sim:/control_unit_tb/Branch_Exec(3)
-add wave -label "Branch_sel0" sim:/control_unit_tb/Branch_Exec(2)
-add wave -label "Branch_imm" sim:/control_unit_tb/Branch_Exec(1)
-add wave -label "Branch_enable" sim:/control_unit_tb/Branch_Exec(0)
-
-# Add divider for microcode
-add wave -divider "Microcode State"
-add wave -position insertpoint -radix binary sim:/control_unit_tb/Micro_inst
-add wave -color "Magenta" sim:/control_unit_tb/UUT/micro_state
-add wave -position insertpoint sim:/control_unit_tb/UUT/micro_active
-add wave -position insertpoint sim:/control_unit_tb/UUT/start_swap_req
-add wave -position insertpoint sim:/control_unit_tb/UUT/start_int_req
-add wave -position insertpoint sim:/control_unit_tb/UUT/start_rti_req
-add wave -position insertpoint sim:/control_unit_tb/UUT/start_int_signal_req
-add wave -position insertpoint sim:/control_unit_tb/UUT/start_immediate_req
+add wave -divider "Microcode"
+add wave -radix binary {sim:/control_unit_tb/Micro_inst}
+add wave {sim:/control_unit_tb/UUT/micro_state}
+add wave {sim:/control_unit_tb/UUT/micro_active}
 
 # Configure wave window
-configure wave -namecolwidth 300
-configure wave -valuecolwidth 120
+configure wave -namecolwidth 250
+configure wave -valuecolwidth 100
 configure wave -justifyvalue left
 configure wave -signalnamewidth 1
 configure wave -snapdistance 10
@@ -109,14 +76,10 @@ run 2000 ns
 # Zoom to fit
 wave zoom full
 
-# Print completion message
 echo ""
 echo "=========================================="
-echo "Control Unit testbench simulation completed"
+echo "Control Unit Testbench Complete"
 echo "=========================================="
-echo "Check waveforms for:"
-echo "  - ForwardEnable disabled during SWAP"
-echo "  - Branch_Exec signals for control flow"
-echo "  - Memory usage prediction feedback"
-echo "  - CCR_enable for flag operations"
+echo "Check transcript for test results"
+echo "Check waveforms for signal analysis"
 echo "=========================================="

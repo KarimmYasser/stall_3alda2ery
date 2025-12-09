@@ -8,13 +8,14 @@ ENTITY control_unit_tb IS
 END ENTITY control_unit_tb;
 
 ARCHITECTURE testbench OF control_unit_tb IS
-    -- Component declaration
+    -- Component declaration (updated to match actual entity)
     COMPONENT Control_Unit IS
         PORT(
             clk: IN Std_logic;
             inturrupt : in std_logic;
             op_code : in std_logic_vector(4 downto 0);
             data_ready : in std_logic;
+            mem_will_be_used : in std_logic;  -- Added
             FD_enable : out std_logic;
             Micro_inst: out std_logic_vector(4 downto 0);
             Stall :out std_logic;
@@ -23,19 +24,29 @@ ARCHITECTURE testbench OF control_unit_tb IS
             MW_enable :out std_logic;
             Branch_Decode: out std_logic;
             ID_flush :out std_logic;
+            mem_usage_predict : out std_logic;  -- Added
             WB_flages: out std_logic_vector(2 downto 0);
             EXE_flages: out std_logic_vector(4 downto 0);
             MEM_flages: out std_logic_vector(6 downto 0);
             IO_flages: out std_logic_vector(1 downto 0);
-            CSwap : out std_logic 
+            CSwap : out std_logic;
+            Branch_Exec: out std_logic_vector(3 downto 0);  -- Added
+            CCR_enable : out std_logic;  -- Added
+            Imm_predict : out std_logic;  -- Added
+            Imm_in_use: in std_logic;  -- Added
+            ForwardEnable : out std_logic;  -- Added
+            Write_in_Src2: out std_logic  -- Added
         );
     END COMPONENT;
 
-    -- Testbench signals
+    -- Testbench signals (add missing signals)
     signal clk : std_logic := '0';
     signal inturrupt : std_logic := '0';
     signal op_code : std_logic_vector(4 downto 0) := (others => '0');
-    signal data_ready : std_logic := '0';
+    signal data_ready : std_logic := '1';
+    signal mem_will_be_used : std_logic := '0';  -- Added
+    signal Imm_in_use : std_logic := '0';  -- Added
+    
     signal FD_enable : std_logic;
     signal Micro_inst : std_logic_vector(4 downto 0);
     signal Stall : std_logic;
@@ -44,11 +55,17 @@ ARCHITECTURE testbench OF control_unit_tb IS
     signal MW_enable : std_logic;
     signal Branch_Decode : std_logic;
     signal ID_flush : std_logic;
+    signal mem_usage_predict : std_logic;  -- Added
     signal WB_flages : std_logic_vector(2 downto 0);
     signal EXE_flages : std_logic_vector(4 downto 0);
     signal MEM_flages : std_logic_vector(6 downto 0);
     signal IO_flages : std_logic_vector(1 downto 0);
     signal CSwap : std_logic;
+    signal Branch_Exec : std_logic_vector(3 downto 0);  -- Added
+    signal CCR_enable : std_logic;  -- Added
+    signal Imm_predict : std_logic;  -- Added
+    signal ForwardEnable : std_logic;  -- Added
+    signal Write_in_Src2 : std_logic;  -- Added
 
     -- Clock period
     constant clk_period : time := 10 ns;
@@ -63,6 +80,7 @@ BEGIN
         inturrupt => inturrupt,
         op_code => op_code,
         data_ready => data_ready,
+        mem_will_be_used => mem_will_be_used,  -- Added
         FD_enable => FD_enable,
         Micro_inst => Micro_inst,
         Stall => Stall,
@@ -71,11 +89,18 @@ BEGIN
         MW_enable => MW_enable,
         Branch_Decode => Branch_Decode,
         ID_flush => ID_flush,
+        mem_usage_predict => mem_usage_predict,  -- Added
         WB_flages => WB_flages,
         EXE_flages => EXE_flages,
         MEM_flages => MEM_flages,
         IO_flages => IO_flages,
-        CSwap => CSwap
+        CSwap => CSwap,
+        Branch_Exec => Branch_Exec,  -- Added
+        CCR_enable => CCR_enable,  -- Added
+        Imm_predict => Imm_predict,  -- Added
+        Imm_in_use => Imm_in_use,  -- Added
+        ForwardEnable => ForwardEnable,  -- Added
+        Write_in_Src2 => Write_in_Src2  -- Added
     );
 
     -- Clock process
