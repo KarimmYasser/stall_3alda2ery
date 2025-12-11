@@ -39,6 +39,26 @@ vcom -93 -work work stages/1_fetch.vhd
 echo "Compiling decode stage..."
 vcom -93 -work work stages/2_decode.vhd
 
+# Compile execute stage components
+echo "Compiling ALU..."
+vcom -93 -work work ../execute/alu.vhd
+
+echo "Compiling forward unit..."
+vcom -93 -work work ../execute/forward_unit.vhd
+
+echo "Compiling CCR..."
+vcom -93 -work work ../execute/ccr.vhd
+
+echo "Compiling branch detection..."
+vcom -93 -work work ../execute/branch_detection.vhd
+
+echo "Compiling execute stage..."
+vcom -93 -work work ../execute/execute_stage.vhd
+
+# Compile EX/MEM pipeline register
+echo "Compiling EX/MEM pipeline register..."
+vcom -93 -work work pipeline/ex_mem_reg.vhd
+
 # Compile top-level processor
 echo "Compiling top-level processor..."
 vcom -93 -work work top_level_processor.vhd
@@ -103,6 +123,25 @@ add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/exe_Rrs1}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/exe_Rrs2}
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/exe_rd_addr}
 
+# Add waves - Execute Stage Outputs (TESTBENCH OBSERVATION)
+add wave -divider "Execute Stage Outputs (TB)"
+add wave -radix hexadecimal -color "Yellow" {sim:/tb_top_level_aggressive/exe_alu_result}
+add wave -radix binary -color "Cyan" {sim:/tb_top_level_aggressive/exe_ccr}
+add wave -color "Red" {sim:/tb_top_level_aggressive/exe_branch_taken}
+add wave -radix unsigned -color "Green" {sim:/tb_top_level_aggressive/exe_rd_addr}
+
+# Add waves - Execute Stage Internal (from processor)
+add wave -divider "Execute Stage Internal"
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/alu_operand_1}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/alu_operand_2}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/alu_result}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/alu_flags}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/alu_flags_enable}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/ccr_out_sig}
+add wave {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/branch_taken_sig}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/forward1_signal}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/EXECUTE_STAGE_INST/forward2_signal}
+
 # Add waves - Control Unit State
 add wave -divider "Control Unit State"
 add wave -color "Magenta" {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/micro_state}
@@ -148,6 +187,8 @@ echo "=========================================="
 echo "Check transcript for cycle-by-cycle logs"
 echo "Check waveforms for:"
 echo "  - Decode to ID/EX register interface"
+echo "  - Execute stage ALU results and CCR flags"
+echo "  - Execute stage forwarding and branch detection"
 echo "  - Feedback signal propagation"
 echo "  - Pipeline register timing"
 echo "  - Control unit state transitions"

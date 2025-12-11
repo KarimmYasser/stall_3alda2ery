@@ -15,7 +15,11 @@ architecture testbench of tb_top_level_aggressive is
             reset : in std_logic;
             interrupt : in std_logic;
             tb_instruction_mem : in std_logic_vector(31 downto 0);
-            tb_mem_read_data : in std_logic_vector(31 downto 0)
+            tb_mem_read_data : in std_logic_vector(31 downto 0);
+            tb_exe_alu_result : out std_logic_vector(31 downto 0);
+            tb_exe_ccr : out std_logic_vector(2 downto 0);
+            tb_exe_branch_taken : out std_logic;
+            tb_exe_rd_addr : out std_logic_vector(2 downto 0)
         );
     end component top_level_processor;
 
@@ -25,6 +29,12 @@ architecture testbench of tb_top_level_aggressive is
     signal interrupt : std_logic := '0';
     signal instruction : std_logic_vector(31 downto 0) := (others => '0');
     signal mem_read_data : std_logic_vector(31 downto 0) := (others => '0');
+    
+    -- Execute stage observation signals
+    signal exe_alu_result : std_logic_vector(31 downto 0);
+    signal exe_ccr : std_logic_vector(2 downto 0);
+    signal exe_branch_taken : std_logic;
+    signal exe_rd_addr : std_logic_vector(2 downto 0);
     
     -- Clock period
     constant clk_period : time := 10 ns;
@@ -48,7 +58,7 @@ architecture testbench of tb_top_level_aggressive is
         return inst;
     end function;
     
-    -- Procedure to log cycle-by-cycle state
+    -- Procedure to log cycle-by-cycle state (simple version)
     procedure log_cycle_state(
         constant cycle_num : in integer;
         constant test_name : in string;
@@ -65,7 +75,37 @@ architecture testbench of tb_top_level_aggressive is
         write(l, string'(" | Opcode: "));
         write(l, instruction(31 downto 27));
         writeline(output, l);
-        write(l, string'("  Check waveforms for detailed signal analysis"));
+        write(l, string'("  Check waveforms for detailed Execute stage analysis"));
+        writeline(output, l);
+        write(l, string'(""));
+        writeline(output, l);
+    end procedure;
+    
+    -- Procedure to log execute stage details
+    procedure log_execute_state(
+        signal alu_result : in std_logic_vector(31 downto 0);
+        signal ccr : in std_logic_vector(2 downto 0);
+        signal branch_taken : in std_logic;
+        signal rd_addr : in std_logic_vector(2 downto 0)
+    ) is
+        variable l : line;
+    begin
+        write(l, string'("  Execute Stage Output:"));
+        writeline(output, l);
+        write(l, string'("    ALU Result: "));
+        hwrite(l, alu_result);
+        write(l, string'(" ("));
+        write(l, to_integer(signed(alu_result)));
+        write(l, string'(")"));
+        writeline(output, l);
+        write(l, string'("    CCR [Z,N,C]: "));
+        write(l, ccr(2));
+        write(l, ccr(1));
+        write(l, ccr(0));
+        write(l, string'(" | Branch: "));
+        write(l, branch_taken);
+        write(l, string'(" | Rd: R"));
+        write(l, to_integer(unsigned(rd_addr)));
         writeline(output, l);
         write(l, string'(""));
         writeline(output, l);
@@ -78,7 +118,11 @@ begin
         reset => reset,
         interrupt => interrupt,
         tb_instruction_mem => instruction,
-        tb_mem_read_data => mem_read_data
+        tb_mem_read_data => mem_read_data,
+        tb_exe_alu_result => exe_alu_result,
+        tb_exe_ccr => exe_ccr,
+        tb_exe_branch_taken => exe_branch_taken,
+        tb_exe_rd_addr => exe_rd_addr
     );
 
     -- Clock generation
@@ -150,6 +194,12 @@ begin
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "ADD", instruction);
+        
+        -- Wait one more cycle to see execute stage output
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "ADD-EXE", instruction);
+        log_execute_state(exe_alu_result, exe_ccr, exe_branch_taken, exe_rd_addr);
         
         -- TEST 3: Interrupt during SWAP
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -261,11 +311,13 @@ begin
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "SUB", instruction);
+        log_execute_state(exe_alu_result, exe_ccr, exe_branch_taken, exe_rd_addr);
         
         instruction <= make_instruction("01011", "00", "011", "100", "101"); -- AND
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "AND", instruction);
+        log_execute_state(exe_alu_result, exe_ccr, exe_branch_taken, exe_rd_addr);
         
         -- TEST 9: STD instruction (memory write with immediate)
         write(l, string'("--------------------------------------------------------------------------------"));
@@ -431,6 +483,7 @@ begin
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "POST-RESET-IADD-C3", instruction);
+        log_execute_state(exe_alu_result, exe_ccr, exe_branch_taken, exe_rd_addr);
         
         -- Summary
         write(l, string'(""));
