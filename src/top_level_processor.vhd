@@ -9,7 +9,13 @@ entity top_level_processor is
         -- Testbench access for instruction injection (for fetch stage)
         tb_instruction_mem : in std_logic_vector(31 downto 0);
         -- Memory read data (for branches from memory stage)
-        tb_mem_read_data : in std_logic_vector(31 downto 0) := (others => '0')
+        tb_mem_read_data : in std_logic_vector(31 downto 0) := (others => '0');
+        
+        -- Execute stage outputs for testbench observation
+        tb_exe_alu_result : out std_logic_vector(31 downto 0);
+        tb_exe_ccr : out std_logic_vector(2 downto 0);
+        tb_exe_branch_taken : out std_logic;
+        tb_exe_rd_addr : out std_logic_vector(2 downto 0)
     );
 end entity top_level_processor;
 
@@ -476,5 +482,11 @@ begin
     -- This should come from decode stage when branch is taken
     -- For now, use placeholder
     immediate_to_fetch <= ifid_instruction_out(15 downto 0) & X"0000"; -- Sign-extend or use immediate field
+    
+    -- Expose execute stage outputs to testbench
+    tb_exe_alu_result <= exe_mem_alu_result_out;
+    tb_exe_ccr <= exe_mem_ccr_out;
+    tb_exe_branch_taken <= exe_mem_branch_taken_out;
+    tb_exe_rd_addr <= exe_mem_rd_addr_out;
     
 end architecture structural;
