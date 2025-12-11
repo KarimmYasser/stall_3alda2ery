@@ -3,10 +3,10 @@ USE IEEE.std_logic_1164.ALL;
 Entity Control_Unit is
     Port(
         clk: IN Std_logic;
+        reset : in std_logic;
         inturrupt : in std_logic;
         op_code : in std_logic_vector(4 downto 0);
         data_ready : in std_logic;
-        mem_will_be_used : in std_logic; -- Feedback from Execute stage: '1' when memory/stack will be accessed in next cycle
         FD_enable : out std_logic;
         Micro_inst: out std_logic_vector(4 downto 0);
         Stall :out std_logic;
@@ -15,22 +15,35 @@ Entity Control_Unit is
         MW_enable :out std_logic;
         Branch_Decode: out std_logic;
         ID_flush :out std_logic;
-        mem_usage_predict : out std_logic; -- Predict memory usage for next instruction (goes to Execute stage)
         WB_flages: out std_logic_vector(2 downto 0);  -- (2)RegWrite, (1)MemtoReg, (0)PC-select
-        EXE_flages: out std_logic_vector(4 downto 0); -- (4:2)ALU_OP, (1)ALUSrc, (0)Index
+        EXE_flages: out std_logic_vector(5 downto 0); -- (5) alu enable(4:2)ALU_OP, (1)ALUSrc, (0)Index
         MEM_flages: out std_logic_vector(6 downto 0); -- (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore/CCRLoad, (0)CCRLoad
         IO_flages: out std_logic_vector(1 downto 0);  -- (1)output, (0)input
         CSwap : out std_logic;
         Branch_Exec: out std_logic_vector(3 downto 0); -- (3)sel1, (2)sel0, (1)imm, (0)branch
         CCR_enable : out std_logic;
-        Imm_predict : out std_logic;
-        Imm_in_use: in std_logic;
         ForwardEnable : out std_logic; --forward enable
-        Write_in_Src2: out std_logic  -- New signal to indicate writing in source 2 register
+        Write_in_Src2: out std_logic;  -- New signal to indicate writing in source 2 register
+        Imm_hazard : out std_logic  -- New signal to indicate immediate hazard
     );
 END entity Control_Unit;
 
 architecture behavior of Control_Unit is
+    -- Component declaration for general_register
+    COMPONENT general_register IS
+        GENERIC (
+            REGISTER_SIZE : INTEGER := 32;
+            RESET_VALUE   : INTEGER := 0
+        );
+        PORT (
+            clk          : IN  STD_LOGIC;
+            reset        : IN  STD_LOGIC;
+            write_enable : IN  STD_LOGIC;
+            data_in      : IN  STD_LOGIC_VECTOR(REGISTER_SIZE - 1 DOWNTO 0);
+            data_out     : OUT STD_LOGIC_VECTOR(REGISTER_SIZE - 1 DOWNTO 0)
+        );
+    END COMPONENT;
+
     type micro_state_type is (
         M_IDLE,
         M_INT_Sig_0, M_INT_Sig_1, M_INT_Sig_2,
@@ -43,10 +56,23 @@ architecture behavior of Control_Unit is
     signal micro_state : micro_state_type := M_IDLE;
     signal micro_next  : micro_state_type := M_IDLE;
     signal micro_active : std_logic := '0';
+    
+    -- Internal registered feedback signals
+    signal mem_will_be_used : std_logic;
+    signal Imm_in_use : std_logic;
+    signal mem_will_be_used_vec_in : std_logic_vector(0 downto 0);
+    signal mem_will_be_used_vec_out : std_logic_vector(0 downto 0);
+    signal Imm_in_use_vec_in : std_logic_vector(0 downto 0);
+    signal Imm_in_use_vec_out : std_logic_vector(0 downto 0);
 
     -- micro-generated control signals (active when micro_active = '1')
     signal micro_FD_enable  : std_logic := '1';
     signal micro_DE_enable  : std_logic := '1';
+
+    -- Internal prediction signals
+    signal mem_usage_predict_internal : std_logic;
+    signal Imm_predict_internal : std_logic;
+    
     signal micro_EM_enable  : std_logic := '1';
     signal micro_MW_enable  : std_logic := '1';
     signal micro_Stall      : std_logic := '0';
@@ -55,7 +81,7 @@ architecture behavior of Control_Unit is
     signal micro_CSwap      : std_logic := '0';
     signal micro_Micro_inst : std_logic_vector(4 downto 0) := (others => '0');
     signal micro_WB_flages  : std_logic_vector(2 downto 0) := (others => '0');
-    signal micro_EXE_flages : std_logic_vector(4 downto 0) := (others => '0');
+    signal micro_EXE_flages : std_logic_vector(5 downto 0) := (others => '0');
     signal micro_MEM_flages : std_logic_vector(6 downto 0) := (others => '0');
     signal micro_IO_flages  : std_logic_vector(1 downto 0) := (others => '0');
     signal micro_Branch_Exec : std_logic_vector(3 downto 0) := (others => '0');
@@ -77,7 +103,7 @@ architecture behavior of Control_Unit is
     signal main_CSwap      : std_logic := '0';
     signal main_Micro_inst : std_logic_vector(4 downto 0) := (others => '0');
     signal main_WB_flages  : std_logic_vector(2 downto 0) := (others => '0');
-    signal main_EXE_flages : std_logic_vector(4 downto 0) := (others => '0');
+    signal main_EXE_flages : std_logic_vector(5 downto 0) := (others => '0');
     signal main_MEM_flages : std_logic_vector(6 downto 0) := (others => '0');
     signal main_IO_flages  : std_logic_vector(1 downto 0) := (others => '0');
     signal main_Branch_Exec : std_logic_vector(3 downto 0) := (others => '0');
@@ -89,10 +115,41 @@ architecture behavior of Control_Unit is
     signal main_Imm_predict : std_logic := '0';
     signal main_ForwardEnable : std_logic := '1';
     signal main_write_in_src2: std_logic := '0';
+    -----------------------------------------------------------------
+    signal Imm_hazard_signal : std_logic := '0';
     ------------------------------------------------------------------
     -- Final outputs are multiplexed between micro_ and main_
     ------------------------------------------------------------------
-    begin
+begin
+    -- Pack/unpack for 1-bit registers (capture internal predictions)
+    mem_will_be_used_vec_in(0) <= mem_usage_predict_internal;
+    mem_will_be_used <= mem_will_be_used_vec_out(0);
+    
+    Imm_in_use_vec_in(0) <= Imm_predict_internal;
+    Imm_in_use <= Imm_in_use_vec_out(0);
+    
+    -- Register for mem_will_be_used feedback
+    REG_MEM_WILL_BE_USED: general_register
+        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk,
+            reset => reset,
+            write_enable => '1',
+            data_in => mem_will_be_used_vec_in,
+            data_out => mem_will_be_used_vec_out
+        );
+    
+    -- Register for Imm_in_use feedback
+    REG_IMM_IN_USE: general_register
+        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
+        PORT MAP (
+            clk => clk,
+            reset => reset,
+            write_enable => '1',
+            data_in => Imm_in_use_vec_in,
+            data_out => Imm_in_use_vec_out
+        );
+    
     Micro_seq : Process(clk, inturrupt)
         begin
             if(inturrupt='1') then
@@ -106,7 +163,7 @@ architecture behavior of Control_Unit is
     micro_active <= '0' when micro_state = M_IDLE else '1';
 
     Micro_comb :process(micro_state,inturrupt,start_int_signal_req,start_swap_req,start_rti_req,
-                        start_int_req,start_immediate_req,Imm_in_use)
+                        start_int_req,start_immediate_req,Imm_in_use,mem_will_be_used)
             begin
                 -- defaults for micro signals (inactive)
                 micro_next <= micro_state;
@@ -127,6 +184,7 @@ architecture behavior of Control_Unit is
                 micro_IO_flages  <= (others => '0');
                 micro_Branch_Exec <= (others => '0');
                 micro_write_in_src2 <= '0';
+                Imm_hazard_signal <= '0';
                 
                 case micro_state is
                     when M_IDLE =>
@@ -189,6 +247,7 @@ architecture behavior of Control_Unit is
                         micro_Stall <= '1';
                         micro_WB_flages(2) <= '1'; --RegWrite
                         micro_CSwap <= '0';
+                        micro_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                         micro_Micro_inst <= "00000";
                         micro_next <= M_SWAP_1;
                     when M_SWAP_1 =>
@@ -197,6 +256,7 @@ architecture behavior of Control_Unit is
                         micro_WB_flages(2) <= '1'; --RegWrite
                         micro_CSwap <= '1';
                         micro_Micro_inst <= "00000";
+                        micro_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                         micro_write_in_src2 <= '1'; -- Indicate writing in source 2 register
                         micro_next <= M_IDLE;
                     
@@ -217,10 +277,12 @@ architecture behavior of Control_Unit is
                         micro_next <= M_IDLE;
                     when M_IMMEDIATE =>
                         -- Immediate handling state 
-                        if(micro_Stall ='1' ) then
+                        if(mem_will_be_used='1' ) then
+                            Imm_hazard_signal<='1';
                             micro_next<= M_IMMEDIATE;
                             micro_EM_enable <= '0';
                             micro_Micro_inst <= "00000";
+                            micro_CCR_enable <= '0';
                             micro_DE_enable <= '0';
                         else 
                             micro_next<= M_IDLE;
@@ -249,7 +311,7 @@ architecture behavior of Control_Unit is
                 end case;
             end process Micro_comb;
 
-Main_comb :  Process(op_code,data_ready)
+Main_comb :  Process(op_code,data_ready,reset)
         begin
         -- default main outputs
             main_FD_enable  <= '1';
@@ -274,48 +336,54 @@ Main_comb :  Process(op_code,data_ready)
             start_int_signal_req  <= '0';
             start_immediate_req <= '0';
             main_write_in_src2 <= '0';
-                if op_code(4) ='0' then
+                if(reset='1') then
+                    main_FD_enable  <= '1';
+                    main_stall <= '0';
+                elsif op_code(4) ='0' then
                     case op_code(3 downto 0) is
-                        when "0000" => --noop--
-                        null;
+                        when "0000" => --noop-- 
+                        main_EXE_flages(5 downto 2) <= "0000"; -- NOP ########
                         when "0001" => -- hlt--
                             main_FD_enable <= '0';
                             main_DE_enable <= '0';
                             main_Stall <= '1';
+                            main_micro_inst <= "00000"; -- HLT ##########
                         when "0010" => -- SetC--
-                            main_EXE_flages(4 downto 2) <= "111"; --Indexing ########## waiting for ALU Op codes setc
+                            main_EXE_flages(5 downto 2) <= "1110"; --Indexing ########## waiting for ALU Op codes setc
                         when "0011" => --inc--
-                            main_EXE_flages(4 downto 2) <= "000"; --Indexing ########## waiting for ALU Op codes add 1
+                            main_EXE_flages(5 downto 2) <= "1100"; --Indexing ########## waiting for ALU Op codes add 1
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "0100" => --not--
-                            main_EXE_flages(4 downto 2) <= "001"; --Indexing ########## waiting for ALU Op codes not
+                            main_EXE_flages(5 downto 2) <= "1101"; --Indexing ########## waiting for ALU Op codes not
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "0101" => --LDM--
-                            main_EXE_flages(4 downto 2) <= "010"; --Indexing ########## waiting for ALU Op codes add
+                            main_EXE_flages(5 downto 2) <= "1010"; --Indexing ########## waiting for ALU Op codes add
                             main_EXE_flages(1) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
                             start_immediate_req <= '1';
                         when "0110" => --mov--
                             main_WB_flages(2) <= '1'; --RegWrite
+                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                         when "0111" => --SWAP--
                             main_Stall <= '1';
+                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             main_WB_flages(2) <= '1'; --RegWrite
                             main_CSwap <= '0';
                             main_forwardEnable <= '0';
                             start_swap_req <= '1';
                         when "1000" => --IADD--
-                            main_EXE_flages(4 downto 2) <= "010";
+                            main_EXE_flages(5 downto 2) <= "1001";
                             main_EXE_flages(1) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
                             start_immediate_req <= '1';
                         when "1001" => --add--
-                            main_EXE_flages(4 downto 2) <= "010";
+                            main_EXE_flages(5 downto 2) <= "1001";
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "1010" => --sub--
-                            main_EXE_flages(4 downto 2) <= "011";
+                            main_EXE_flages(5 downto 2) <= "1010";
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "1011" => --AND--
-                            main_EXE_flages(4 downto 2) <= "100";
+                            main_EXE_flages(5 downto 2) <= "1011";
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "1100" => --JZ--
                             main_branch_exec(2) <= '1'; --sel0
@@ -357,10 +425,12 @@ Main_comb :  Process(op_code,data_ready)
                             main_WB_flages(1) <= '1'; --MemtoReg
                             main_WB_flages(2) <= '1'; --RegWrite
                             main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             start_immediate_req <= '1';
                         when "0101" => --STD--
                             main_MEM_flages(4) <= '1'; --MEMWrite
                             main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             main_MEM_flages(6) <= '0'; --WDselect
                             start_immediate_req <= '1';
                         when "0110" => --call--
@@ -370,6 +440,7 @@ Main_comb :  Process(op_code,data_ready)
                             main_MEM_flages(6) <= '1'; --WDselect
                             main_WB_flages(0) <= '1'; --PC-select
                             main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             main_branch_exec(1) <= '1'; --imm
                             main_branch_exec(0) <= '1';
                             start_immediate_req <= '1';
@@ -406,11 +477,14 @@ Main_comb :  Process(op_code,data_ready)
     Stall      <= '1' when (micro_active = '1' and micro_Stall = '1') or mem_will_be_used = '1'
                       else main_Stall;
     
-    -- Predict if current instruction will use memory (send to Execute for feedback loop)
-    mem_usage_predict <= '1' when (micro_active = '1' and (micro_MEM_flages(2) = '1' or micro_MEM_flages(3) = '1' or micro_MEM_flages(4) = '1' or micro_MEM_flages(5) = '1'
+    -- Predict if current instruction will use memory (internal for register input)
+    mem_usage_predict_internal <= '1' when (micro_active = '1' and (micro_MEM_flages(2) = '1' or micro_MEM_flages(3) = '1' or micro_MEM_flages(4) = '1' or micro_MEM_flages(5) = '1'
                                                         or micro_MEM_flages(1)='1'or micro_MEM_flages(0)='1' ) )or
                                    (micro_active = '0' and (main_MEM_flages(2) = '1' or main_MEM_flages(3) = '1' or main_MEM_flages(4) = '1' or main_MEM_flages(5) = '1' or main_MEM_flages(1)='1'or main_MEM_flages(0)='1' ) )
                          else '0';
+    
+    -- Immediate prediction (internal for register input)
+    Imm_predict_internal <= '1' when start_immediate_req = '1' and micro_active = '0' else '0';
     
     ID_flush   <= micro_ID_flush   when micro_active = '1' else main_ID_flush;
     Branch_Decode <= micro_Branch_Decode when micro_active = '1' else main_Branch_Decode;
@@ -424,7 +498,7 @@ Main_comb :  Process(op_code,data_ready)
     IO_flages  <= micro_IO_flages  when micro_active = '1' else main_IO_flages;
     Branch_Exec <= micro_Branch_Exec when micro_active = '1' else main_Branch_Exec;
     CCR_enable <= micro_CCR_enable when micro_active = '1' else main_CCR_enable;
-    Imm_predict <= '1' when start_immediate_req = '1' else '0';
     ForwardEnable <= micro_ForwardEnable when micro_active = '1' else main_ForwardEnable;
     Write_in_Src2 <= micro_write_in_src2 when micro_active = '1' else main_write_in_src2;
+    Imm_hazard <= Imm_hazard_signal;
 end architecture behavior;

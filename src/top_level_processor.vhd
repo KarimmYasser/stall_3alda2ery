@@ -61,8 +61,13 @@ architecture structural of top_level_processor is
             PC : in std_logic_vector(31 downto 0);
             mem_br: in std_logic;
             exe_br: in std_logic;
-            mem_will_be_used_feedback : in std_logic;
-            imm_in_use_feedback : in std_logic;
+            
+            -- Previous instruction flags from ID/EX register
+            WB_flages_in : in std_logic_vector(2 downto 0);
+            EXE_flages_in : in std_logic_vector(5 downto 0);
+            MEM_flages_in : in std_logic_vector(6 downto 0);
+            IO_flages_in : in std_logic_vector(1 downto 0);
+            
             FD_enable : out std_logic;
             Stall :out std_logic;
             DE_enable :out  std_logic;
@@ -70,13 +75,13 @@ architecture structural of top_level_processor is
             MW_enable :out std_logic;
             Branch_Decode: out std_logic;
             Micro_inst_out: out std_logic_vector(4 downto 0);
-            mem_usage_predict_out : out std_logic;
-            imm_predict_out : out std_logic;
             WB_flages_out: out std_logic_vector(2 downto 0);
-            EXE_flages_out: out std_logic_vector(4 downto 0);
+            EXE_flages_out: out std_logic_vector(5 downto 0);
             MEM_flages_out: out std_logic_vector(6 downto 0);
             IO_flages_out: out std_logic_vector(1 downto 0);
             Branch_Exec_out: out std_logic_vector(3 downto 0);
+            CCR_enable_out: out std_logic;
+            Imm_hazard_out: out std_logic;
             FU_enable_out: out std_logic;
             Rrs1_out: out std_logic_vector(31 downto 0);
             Rrs2_out: out std_logic_vector(31 downto 0);
@@ -94,18 +99,14 @@ architecture structural of top_level_processor is
         clk             : IN  STD_LOGIC;
         reset           : IN  STD_LOGIC;
         write_enable    : IN  STD_LOGIC;
-        mem_usage_predict_in : IN STD_LOGIC;
-        mem_will_be_used_out : OUT STD_LOGIC;
-        Imm_predict_in : IN STD_LOGIC;
-        Imm_in_use_out : OUT STD_LOGIC;
         WB_flages_in    : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
-        EXE_flages_in   : IN  STD_LOGIC_VECTOR(4 DOWNTO 0);
+        EXE_flages_in   : IN  STD_LOGIC_VECTOR(5 DOWNTO 0);
         FU_enable_in    : IN  STD_LOGIC;
         MEM_flages_in   : IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_in    : IN  STD_LOGIC_VECTOR(1 DOWNTO 0);
         Branch_Exec_in  : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
         WB_flages_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-        EXE_flages_out  : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+        EXE_flages_out  : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
         MEM_flages_out  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_out   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
         Branch_Exec_out : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -149,13 +150,13 @@ architecture structural of top_level_processor is
     signal decode_instruction : std_logic_vector(31 downto 0);
     signal decode_PC : std_logic_vector(31 downto 0);
     signal decode_DE_enable : std_logic;
-    signal decode_mem_predict : std_logic;
-    signal decode_imm_predict : std_logic;
     signal decode_WB_flages : std_logic_vector(2 downto 0);
-    signal decode_EXE_flages : std_logic_vector(4 downto 0);
+    signal decode_EXE_flages : std_logic_vector(5 downto 0);
     signal decode_MEM_flages : std_logic_vector(6 downto 0);
     signal decode_IO_flages : std_logic_vector(1 downto 0);
     signal decode_Branch_Exec : std_logic_vector(3 downto 0);
+    signal decode_CCR_enable : std_logic;
+    signal decode_Imm_hazard : std_logic;
     signal decode_FU_enable : std_logic;
     signal decode_Rrs1 : std_logic_vector(31 downto 0);
     signal decode_Rrs2 : std_logic_vector(31 downto 0);
@@ -165,13 +166,9 @@ architecture structural of top_level_processor is
     signal decode_rs2_addr : std_logic_vector(2 downto 0);
     signal decode_rd_addr : std_logic_vector(2 downto 0);
     
-    -- Feedback signals from ID/EX register to Decode
-    signal mem_will_be_used_feedback : std_logic;
-    signal imm_in_use_feedback : std_logic;
-    
     -- Signals from ID/EX register to Execute stage
     signal exe_WB_flages : std_logic_vector(2 downto 0);
-    signal exe_EXE_flages : std_logic_vector(4 downto 0);
+    signal exe_EXE_flages : std_logic_vector(5 downto 0);
     signal exe_MEM_flages : std_logic_vector(6 downto 0);
     signal exe_IO_flages : std_logic_vector(1 downto 0);
     signal exe_Branch_Exec : std_logic_vector(3 downto 0);
@@ -231,8 +228,10 @@ begin
         PC => ifid_pc_out,
         mem_br => mem_br_signal,
         exe_br => exe_br_signal,
-        mem_will_be_used_feedback => mem_will_be_used_feedback,
-        imm_in_use_feedback => imm_in_use_feedback,
+        WB_flages_in => exe_WB_flages,
+        EXE_flages_in => exe_EXE_flages,
+        MEM_flages_in => exe_MEM_flages,
+        IO_flages_in => exe_IO_flages,
         FD_enable => FD_enable_signal,
         Stall => stall_signal,
         DE_enable => decode_DE_enable,
@@ -240,13 +239,13 @@ begin
         MW_enable => open,
         Branch_Decode => branch_decode_signal,
         Micro_inst_out => micro_inst_signal,
-        mem_usage_predict_out => decode_mem_predict,
-        imm_predict_out => decode_imm_predict,
         WB_flages_out => decode_WB_flages,
         EXE_flages_out => decode_EXE_flages,
         MEM_flages_out => decode_MEM_flages,
         IO_flages_out => decode_IO_flages,
         Branch_Exec_out => decode_Branch_Exec,
+        CCR_enable_out => decode_CCR_enable,
+        Imm_hazard_out => decode_Imm_hazard,
         FU_enable_out => decode_FU_enable,
         Rrs1_out => decode_Rrs1,
         Rrs2_out => decode_Rrs2,
@@ -262,10 +261,6 @@ begin
         clk => clk,
         reset => reset,
         write_enable => decode_DE_enable,
-        mem_usage_predict_in => decode_mem_predict,
-        mem_will_be_used_out => mem_will_be_used_feedback,
-        Imm_predict_in => decode_imm_predict,
-        Imm_in_use_out => imm_in_use_feedback,
         WB_flages_in => decode_WB_flages,
         EXE_flages_in => decode_EXE_flages,
         FU_enable_in => decode_FU_enable,

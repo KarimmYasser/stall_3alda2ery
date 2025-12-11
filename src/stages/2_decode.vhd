@@ -11,9 +11,11 @@ entity Decode is
         mem_br: in std_logic;
         exe_br: in std_logic;
         
-        -- Feedback from Execute stage (through ID/EX register in top level)
-        mem_will_be_used_feedback : in std_logic;
-        imm_in_use_feedback : in std_logic;
+        -- Previous instruction flags from ID/EX register
+        WB_flages_in : in std_logic_vector(2 downto 0);
+        EXE_flages_in : in std_logic_vector(5 downto 0);
+        MEM_flages_in : in std_logic_vector(6 downto 0);
+        IO_flages_in : in std_logic_vector(1 downto 0);
         
         -- Pipeline control outputs
         FD_enable : out std_logic;
@@ -24,16 +26,14 @@ entity Decode is
         Branch_Decode: out std_logic;
         Micro_inst_out: out std_logic_vector(4 downto 0);
         
-        -- Prediction signals (to be registered in top level)
-        mem_usage_predict_out : out std_logic;
-        imm_predict_out : out std_logic;
-        
         -- Control signals outputs (to ID/EX register in top level)
         WB_flages_out: out std_logic_vector(2 downto 0);
-        EXE_flages_out: out std_logic_vector(4 downto 0);
+        EXE_flages_out: out std_logic_vector(5 downto 0);
         MEM_flages_out: out std_logic_vector(6 downto 0);
         IO_flages_out: out std_logic_vector(1 downto 0);
         Branch_Exec_out: out std_logic_vector(3 downto 0);
+        CCR_enable_out: out std_logic;
+        Imm_hazard_out: out std_logic;
         FU_enable_out: out std_logic;
         
         -- Data outputs (to ID/EX register in top level)
@@ -51,11 +51,10 @@ architecture Behavior of Decode is
     component Control_Unit is
       Port(
         clk: IN Std_logic;
+        reset : in std_logic;
         inturrupt : in std_logic;
         op_code : in std_logic_vector(4 downto 0);
         data_ready : in std_logic;
-        mem_will_be_used : in std_logic;
-        Imm_in_use: in std_logic;
         FD_enable : out std_logic;
         Micro_inst: out std_logic_vector(4 downto 0);
         Stall :out std_logic;
@@ -64,15 +63,14 @@ architecture Behavior of Decode is
         MW_enable :out std_logic;
         Branch_Decode: out std_logic;
         ID_flush :out std_logic;
-        mem_usage_predict : out std_logic;
         WB_flages: out std_logic_vector(2 downto 0);
-        EXE_flages: out std_logic_vector(4 downto 0);
+        EXE_flages: out std_logic_vector(5 downto 0);
         MEM_flages: out std_logic_vector(6 downto 0);
         IO_flages: out std_logic_vector(1 downto 0);
         CSwap : out std_logic;
         Branch_Exec: out std_logic_vector(3 downto 0);
         CCR_enable : out std_logic;
-        Imm_predict : out std_logic;
+        Imm_hazard : out std_logic;
         ForwardEnable : out std_logic;
         Write_in_Src2: out std_logic
     );
@@ -103,7 +101,7 @@ architecture Behavior of Decode is
     signal we : std_logic;
     signal Rs1, Rs2 : std_logic_vector (31 DOWNTO 0);
     signal main_wb_flages : std_logic_vector(2 downto 0);
-    signal main_exe_flages : std_logic_vector(4 downto 0);
+    signal main_exe_flages : std_logic_vector(5 downto 0);
     signal main_mem_flages : std_logic_vector(6 downto 0);
     signal main_io_flages : std_logic_vector(1 downto 0);
     signal main_branch_exec : std_logic_vector(3 downto 0);
@@ -116,11 +114,12 @@ architecture Behavior of Decode is
     
     -- Signals after flush logic (these go directly to outputs)
     signal wb_flages_flushed : std_logic_vector(2 downto 0);
-    signal exe_flages_flushed : std_logic_vector(4 downto 0);
+    signal exe_flages_flushed : std_logic_vector(5 downto 0);
     signal mem_flages_flushed : std_logic_vector(6 downto 0);
     signal io_flages_flushed : std_logic_vector(1 downto 0);
     signal branch_exec_flushed : std_logic_vector(3 downto 0);
     signal CCR_enable_signal : std_logic;
+    signal Imm_hazard_signal : std_logic;
     signal ForwardEnable_signal : std_logic;
     signal Write_in_src2_signal : std_logic;
     signal mem_usage_predict_signal : std_logic;
@@ -129,11 +128,10 @@ architecture Behavior of Decode is
 begin
     CU: Control_Unit port map(
         clk => clk,
+        reset => reset,
         inturrupt => inturrupt,
         op_code => opcode,  -- Use opcode input directly (may be micro-opcode from fetch)
         data_ready => '1',
-        mem_will_be_used => mem_will_be_used_feedback,
-        Imm_in_use => imm_in_use_feedback,
         FD_enable => FD_enable,
         Micro_inst => Micro_inst_out,
         Stall => Stall,
@@ -142,8 +140,6 @@ begin
         MW_enable => MW_enable,
         Branch_Decode => Branch_Decode,
         ID_flush => ID_flush_main,
-        mem_usage_predict => mem_usage_predict_signal,
-        Imm_predict => imm_predict_signal,
         WB_flages => main_wb_flages,
         EXE_flages => main_exe_flages,
         MEM_flages => main_mem_flages,
@@ -151,6 +147,7 @@ begin
         CSwap => CSwap,
         Branch_Exec => main_branch_exec,
         CCR_enable => CCR_enable_signal,
+        Imm_hazard => Imm_hazard_signal,
         ForwardEnable => ForwardEnable_signal,
         Write_in_Src2 => Write_in_src2_signal
     );
@@ -186,19 +183,16 @@ begin
     index_out <= instruction(26 downto 25);  -- From instruction bits
     pc_out <= PC;
     
-    -- Prediction outputs (to be registered in top level)
-    mem_usage_predict_out <= mem_usage_predict_signal;
-    imm_predict_out <= imm_predict_signal;
     
     -- DE enable output
     DE_enable <= main_DE_enable;
     
     -- Flush logic: zero out control signals on branch or flush
-    wb_flages_flushed <= main_wb_flages when exe_br='0' and mem_br='0' and ID_flush_main='0' else (others => '0');
-    exe_flages_flushed <= main_exe_flages when mem_br='0' and ID_flush_main='0' else (others => '0');
-    mem_flages_flushed <= main_mem_flages when ID_flush_main='0' and mem_br='0' and exe_br='0' else (others => '0');
-    io_flages_flushed <= main_io_flages when ID_flush_main='0' and mem_br='0' and exe_br='0' else (others => '0');
-    branch_exec_flushed <= main_branch_exec when ID_flush_main='0' and mem_br='0' and exe_br='0' else (others => '0');
+    wb_flages_flushed <= main_wb_flages when (exe_br='0' and mem_br='0' and ID_flush_main='0') else (others => '0');
+    exe_flages_flushed <= main_exe_flages when (mem_br='0' and ID_flush_main='0') else (others => '0');
+    mem_flages_flushed <= main_mem_flages when (ID_flush_main='0' and mem_br='0' and exe_br='0') else (others => '0');
+    io_flages_flushed <= main_io_flages when (ID_flush_main='0' and mem_br='0' and exe_br='0') else (others => '0');
+    branch_exec_flushed <= main_branch_exec when (ID_flush_main='0' and mem_br='0' and exe_br='0') else (others => '0');
     
     -- Control signal outputs (after flush logic)
     WB_flages_out <= wb_flages_flushed;
@@ -206,6 +200,8 @@ begin
     MEM_flages_out <= mem_flages_flushed;
     IO_flages_out <= io_flages_flushed;
     Branch_Exec_out <= branch_exec_flushed;
+    CCR_enable_out <= CCR_enable_signal;
+    Imm_hazard_out <= Imm_hazard_signal;
     FU_enable_out <= ForwardEnable_signal;
 
 end architecture Behavior;

@@ -11,21 +11,9 @@ ENTITY id_ex_reg_with_feedback IS
         reset           : IN  STD_LOGIC;
         write_enable    : IN  STD_LOGIC;
         
-        -- Memory usage prediction from Control Unit (Decode stage)
-        mem_usage_predict_in : IN STD_LOGIC;
-        
-        -- Feedback to Control Unit (Decode stage) - indicates memory will be used next cycle
-        mem_will_be_used_out : OUT STD_LOGIC;
-        
-        -- Immediate fetch prediction from Control Unit (Decode stage)
-        Imm_predict_in : IN STD_LOGIC;
-        
-        -- Feedback to Control Unit (Decode stage) - indicates immediate will be fetched
-        Imm_in_use_out : OUT STD_LOGIC;
-        
         -- Control signals from Decode
         WB_flages_in    : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
-        EXE_flages_in   : IN  STD_LOGIC_VECTOR(4 DOWNTO 0);
+        EXE_flages_in   : IN  STD_LOGIC_VECTOR(5 DOWNTO 0);
         FU_enable_in   : IN  STD_LOGIC;
         MEM_flages_in   : IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_in    : IN  STD_LOGIC_VECTOR(1 DOWNTO 0);
@@ -33,7 +21,7 @@ ENTITY id_ex_reg_with_feedback IS
         
         -- Control signals to Execute
         WB_flages_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-        EXE_flages_out  : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+        EXE_flages_out  : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
         MEM_flages_out  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_out   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
         Branch_Exec_out : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -76,14 +64,10 @@ ARCHITECTURE Behavioral OF id_ex_reg_with_feedback IS
     END COMPONENT;
     
     -- Concatenated input/output signals for vector registers
-    SIGNAL control_flags_in  : STD_LOGIC_VECTOR(20 DOWNTO 0); -- 3+5+7+2+4
-    SIGNAL control_flags_out : STD_LOGIC_VECTOR(20 DOWNTO 0);
+    SIGNAL control_flags_in  : STD_LOGIC_VECTOR(21 DOWNTO 0); -- 3+6+7+2+4
+    SIGNAL control_flags_out : STD_LOGIC_VECTOR(21 DOWNTO 0);
     SIGNAL addresses_in      : STD_LOGIC_VECTOR(10 DOWNTO 0);  -- Changed from 10 DOWNTO 0 (was correct, comment was wrong: 3+2+3+3=11)
     SIGNAL addresses_out     : STD_LOGIC_VECTOR(10 DOWNTO 0);
-    SIGNAL mem_predict_vec_in  : STD_LOGIC_VECTOR(0 DOWNTO 0);
-    SIGNAL mem_predict_vec_out : STD_LOGIC_VECTOR(0 DOWNTO 0);
-    SIGNAL imm_predict_vec_in  : STD_LOGIC_VECTOR(0 DOWNTO 0);
-    SIGNAL imm_predict_vec_out : STD_LOGIC_VECTOR(0 DOWNTO 0);
     signal ForwardEnable_signal_in : std_logic_vector(0 downto 0);
     signal ForwardEnable_signal_out : std_logic_vector(0 downto 0);
     
@@ -91,13 +75,11 @@ BEGIN
     -- Pack inputs
     control_flags_in <= WB_flages_in & EXE_flages_in & MEM_flages_in & IO_flages_in & Branch_Exec_in;
     addresses_in     <= rd_addr_in & index_in & rs1_addr_in & rs2_addr_in;
-    mem_predict_vec_in(0) <= mem_usage_predict_in;
-    imm_predict_vec_in(0) <= Imm_predict_in;
     ForwardEnable_signal_in(0) <= FU_enable_in;
     
     -- Unpack outputs
-    WB_flages_out   <= control_flags_out(20 DOWNTO 18);
-    EXE_flages_out  <= control_flags_out(17 DOWNTO 13);
+    WB_flages_out   <= control_flags_out(21 DOWNTO 19);
+    EXE_flages_out  <= control_flags_out(18 DOWNTO 13);
     MEM_flages_out  <= control_flags_out(12 DOWNTO 6);
     IO_flages_out   <= control_flags_out(5 DOWNTO 4);
     Branch_Exec_out <= control_flags_out(3 DOWNTO 0);
@@ -108,31 +90,6 @@ BEGIN
     index_out    <= addresses_out(7 DOWNTO 6);
     rs1_addr_out <= addresses_out(5 DOWNTO 3);
     rs2_addr_out <= addresses_out(2 DOWNTO 0);
-    
-    mem_will_be_used_out <= mem_predict_vec_out(0);
-    Imm_in_use_out <= imm_predict_vec_out(0);
-    
-    -- Memory usage prediction register (1 bit)
-    REG_MEM_PREDICT: general_register
-        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
-        PORT MAP (
-            clk => clk,
-            reset => reset,
-            write_enable => write_enable,
-            data_in => mem_predict_vec_in,
-            data_out => mem_predict_vec_out
-        );
-    
-    -- Immediate fetch prediction register (1 bit)
-    REG_IMM_PREDICT: general_register
-        GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
-        PORT MAP (
-            clk => clk,
-            reset => reset,
-            write_enable => write_enable,
-            data_in => imm_predict_vec_in,
-            data_out => imm_predict_vec_out
-        );
     
     -- ForwardEnable register (1 bit)
     REG_FU_enable: general_register
@@ -145,9 +102,9 @@ BEGIN
             data_out => ForwardEnable_signal_out
         );
     
-    -- Control flags register (21 bits)
+    -- Control flags register (22 bits)
     REG_CONTROL_FLAGS: general_register
-        GENERIC MAP (REGISTER_SIZE => 21, RESET_VALUE => 0)
+        GENERIC MAP (REGISTER_SIZE => 22, RESET_VALUE => 0)
         PORT MAP (
             clk => clk,
             reset => reset,

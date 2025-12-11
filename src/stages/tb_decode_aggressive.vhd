@@ -14,10 +14,13 @@ architecture testbench of tb_decode_aggressive is
             inturrupt : in std_logic;
             reset: in std_logic;
             clk: in std_logic;
-            instruction : in std_logic_vector(31 downto 0);
+            instruction : in std_logic_vector(26 downto 0);
+            opcode : in std_logic_vector(4 downto 0);
             PC : in std_logic_vector(31 downto 0);
             mem_br: in std_logic;
             exe_br: in std_logic;
+            mem_will_be_used_feedback : in std_logic;
+            imm_in_use_feedback : in std_logic;
             FD_enable : out std_logic;
             Stall :out std_logic;
             DE_enable :out  std_logic;
@@ -25,18 +28,20 @@ architecture testbench of tb_decode_aggressive is
             MW_enable :out std_logic;
             Branch_Decode: out std_logic;
             Micro_inst_out: out std_logic_vector(4 downto 0);
-            WB_flages_pipe_out: out std_logic_vector(2 downto 0);
-            EXE_flages_pipe_out: out std_logic_vector(4 downto 0);
-            MEM_flages_pipe_out: out std_logic_vector(6 downto 0);
-            IO_flages_pipe_out: out std_logic_vector(1 downto 0);
-            Branch_Exec_pipe_out: out std_logic_vector(3 downto 0);
-            Rrs1_pipe_out: out std_logic_vector(31 downto 0);
-            Rrs2_pipe_out: out std_logic_vector(31 downto 0);
-            index_pipe_out: out std_logic_vector(1 downto 0);  -- 2 bits
-            pc_pipe_out: out std_logic_vector(31 downto 0);
-            rs1_addr_pipe_out: out std_logic_vector(2 downto 0);
-            rs2_addr_pipe_out: out std_logic_vector(2 downto 0);
-            rd_addr_pipe_out: out std_logic_vector(2 downto 0)
+            WB_flages_out: out std_logic_vector(2 downto 0);
+            EXE_flages_out: out std_logic_vector(4 downto 0);
+            MEM_flages_out: out std_logic_vector(6 downto 0);
+            IO_flages_out: out std_logic_vector(1 downto 0);
+            Branch_Exec_out: out std_logic_vector(3 downto 0);
+            CCR_enable_out: out std_logic;
+            FU_enable_out: out std_logic;
+            Rrs1_out: out std_logic_vector(31 downto 0);
+            Rrs2_out: out std_logic_vector(31 downto 0);
+            index_out: out std_logic_vector(1 downto 0);
+            pc_out: out std_logic_vector(31 downto 0);
+            rs1_addr_out: out std_logic_vector(2 downto 0);
+            rs2_addr_out: out std_logic_vector(2 downto 0);
+            rd_addr_out: out std_logic_vector(2 downto 0)
         );
     end component Decode;
 
@@ -48,6 +53,10 @@ architecture testbench of tb_decode_aggressive is
     signal PC : std_logic_vector(31 downto 0) := X"00000100";
     signal mem_br : std_logic := '0';
     signal exe_br : std_logic := '0';
+    signal WB_flages_in : std_logic_vector(2 downto 0) := (others => '0');
+    signal EXE_flages_in : std_logic_vector(5 downto 0) := (others => '0');
+    signal MEM_flages_in : std_logic_vector(6 downto 0) := (others => '0');
+    signal IO_flages_in : std_logic_vector(1 downto 0) := (others => '0');
     
     -- Output signals
     signal FD_enable : std_logic;
@@ -57,7 +66,7 @@ architecture testbench of tb_decode_aggressive is
     signal MW_enable : std_logic;
     signal Branch_Decode : std_logic;
     signal WB_flages : std_logic_vector(2 downto 0);
-    signal EXE_flages : std_logic_vector(4 downto 0);
+    signal EXE_flages : std_logic_vector(5 downto 0);
     signal MEM_flages : std_logic_vector(6 downto 0);
     signal IO_flages : std_logic_vector(1 downto 0);
     signal Branch_Exec : std_logic_vector(3 downto 0);
@@ -69,6 +78,11 @@ architecture testbench of tb_decode_aggressive is
     signal rs2_addr : std_logic_vector(2 downto 0);
     signal rd_addr : std_logic_vector(2 downto 0);
     signal Micro_inst : std_logic_vector(4 downto 0);
+    signal mem_usage_predict : std_logic;
+    signal imm_predict : std_logic;
+    signal CCR_enable : std_logic;
+    signal Imm_hazard : std_logic;
+    signal FU_enable : std_logic;
     
     -- Clock period
     constant clk_period : time := 10 ns;
@@ -173,10 +187,15 @@ begin
         clk => clk,
         reset => reset,
         inturrupt => inturrupt,
-        instruction => instruction,
+        instruction => instruction(26 downto 0),
+        opcode => instruction(31 downto 27),
         PC => PC,
         mem_br => mem_br,
         exe_br => exe_br,
+        WB_flages_in => WB_flages_in,
+        EXE_flages_in => EXE_flages_in,
+        MEM_flages_in => MEM_flages_in,
+        IO_flages_in => IO_flages_in,
         FD_enable => FD_enable,
         Stall => Stall,
         DE_enable => DE_enable,
@@ -184,18 +203,22 @@ begin
         MW_enable => MW_enable,
         Branch_Decode => Branch_Decode,
         Micro_inst_out => Micro_inst,
-        WB_flages_pipe_out => WB_flages,
-        EXE_flages_pipe_out => EXE_flages,
-        MEM_flages_pipe_out => MEM_flages,
-        IO_flages_pipe_out => IO_flages,
-        Branch_Exec_pipe_out => Branch_Exec,
-        Rrs1_pipe_out => Rrs1,
-        Rrs2_pipe_out => Rrs2,
-        index_pipe_out => index,
-        pc_pipe_out => pc_out,
-        rs1_addr_pipe_out => rs1_addr,
-        rs2_addr_pipe_out => rs2_addr,
-        rd_addr_pipe_out => rd_addr
+
+        WB_flages_out => WB_flages,
+        EXE_flages_out => EXE_flages,
+        MEM_flages_out => MEM_flages,
+        IO_flages_out => IO_flages,
+        Branch_Exec_out => Branch_Exec,
+        CCR_enable_out => CCR_enable,
+        Imm_hazard_out => Imm_hazard,
+        FU_enable_out => FU_enable,
+        Rrs1_out => Rrs1,
+        Rrs2_out => Rrs2,
+        index_out => index,
+        pc_out => pc_out,
+        rs1_addr_out => rs1_addr,
+        rs2_addr_out => rs2_addr,
+        rd_addr_out => rd_addr
     );
 
     -- Clock generation

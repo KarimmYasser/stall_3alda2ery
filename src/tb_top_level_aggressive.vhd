@@ -374,6 +374,64 @@ begin
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "AFTER-HLT-NOT", instruction);
         
+        -- TEST 13: Reset and Recovery
+        write(l, string'("--------------------------------------------------------------------------------"));
+        writeline(output, l);
+        write(l, string'("TEST 13: Reset and Recovery"));
+        writeline(output, l);
+        write(l, string'("Expected: System resets, then executes new instructions"));
+        writeline(output, l);
+        write(l, string'("--------------------------------------------------------------------------------"));
+        writeline(output, l);
+        
+        reset <= '1';
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "RESET-ASSERT", instruction);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "RESET-HOLD", instruction);
+        
+        reset <= '0';
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "RESET-RELEASE", instruction);
+        
+        -- ADD after reset
+        instruction <= make_instruction("01001", "00", "001", "010", "011"); -- ADD
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-ADD", instruction);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-ADD-C2", instruction);
+        
+        -- MOV after reset
+        instruction <= make_instruction("00110", "00", "010", "011", "100"); -- MOV
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-MOV", instruction);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-MOV-C2", instruction);
+        
+        -- IADD after reset
+        instruction <= make_instruction("01000", "00", "011", "100", "101"); -- IADD
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-IADD", instruction);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-IADD-C2", instruction);
+        
+        cycle_count := cycle_count + 1;
+        wait until rising_edge(clk);
+        log_cycle_state(cycle_count, "POST-RESET-IADD-C3", instruction);
+        
         -- Summary
         write(l, string'(""));
         writeline(output, l);

@@ -82,14 +82,17 @@ add wave {sim:/tb_top_level_aggressive/DUT/decode_DE_enable}
 add wave -radix binary {sim:/tb_top_level_aggressive/DUT/decode_WB_flages}
 add wave -radix binary {sim:/tb_top_level_aggressive/DUT/decode_EXE_flages}
 add wave -radix binary {sim:/tb_top_level_aggressive/DUT/decode_MEM_flages}
+add wave -color "Cyan" {sim:/tb_top_level_aggressive/DUT/decode_CCR_enable}
+add wave -color "Red" {sim:/tb_top_level_aggressive/DUT/decode_Imm_hazard}
 
 # Add waves - ID/EX Pipeline Register Signals
 add wave -divider "ID/EX Pipeline Register"
 add wave {sim:/tb_top_level_aggressive/DUT/ID_EX_REGISTER/write_enable}
-add wave {sim:/tb_top_level_aggressive/DUT/mem_will_be_used_feedback}
-add wave {sim:/tb_top_level_aggressive/DUT/imm_in_use_feedback}
-add wave {sim:/tb_top_level_aggressive/DUT/decode_mem_predict}
-add wave {sim:/tb_top_level_aggressive/DUT/decode_imm_predict}
+
+# Add waves - Control Unit Feedback Registers
+add wave -divider "Control Unit Feedback"
+add wave {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/mem_will_be_used}
+add wave {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/Imm_in_use}
 
 # Add waves - Execute Stage Inputs (from ID/EX register)
 add wave -divider "Execute Stage Inputs"
@@ -103,6 +106,7 @@ add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/exe_rd_addr}
 # Add waves - Control Unit State
 add wave -divider "Control Unit State"
 add wave -color "Magenta" {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/micro_state}
+add wave -color "Cyan" {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/micro_next}
 add wave {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/micro_active}
 add wave {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/start_swap_req}
 add wave {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/CU/start_int_req}
