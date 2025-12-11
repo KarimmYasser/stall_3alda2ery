@@ -44,9 +44,19 @@ entity execute_stage is
     wb_forwarded_data : in std_logic_vector(31 downto 0);  -- Forwarded data from WB
     swap_forwarded_data : in std_logic_vector(31 downto 0); -- Forwarded data for SWAP
 
-    -- Outputs
-    ex_mem_reg : out std_logic_vector(114 downto 0);    -- EX/MEM pipeline register
-    branch_enable : out std_logic                        -- Branch taken signal
+    -- EX/MEM Pipeline Register Outputs
+    ex_mem_wb_signals : out std_logic_vector(2 downto 0);      -- WB control signals
+    ex_mem_mem_signals : out std_logic_vector(6 downto 0);     -- MEM control signals
+    ex_mem_output_signal : out std_logic;                      -- Output port enable
+    ex_mem_branch_taken : out std_logic;                       -- Branch taken
+    ex_mem_ccr : out std_logic_vector(2 downto 0);             -- Condition flags
+    ex_mem_rs2_data : out std_logic_vector(31 downto 0);       -- Rs2 data
+    ex_mem_alu_result : out std_logic_vector(31 downto 0);     -- ALU result
+    ex_mem_pc : out std_logic_vector(31 downto 0);             -- Program counter
+    ex_mem_rd_addr : out std_logic_vector(2 downto 0);         -- Destination register
+
+    -- Branch Enable Output
+    branch_enable : out std_logic                              -- Branch enable
   );
 end entity execute_stage;
 
@@ -57,7 +67,7 @@ architecture behavioral of execute_stage is
     port (
       alu_operand_1 : in std_logic_vector(31 downto 0);   -- First operand
       alu_operand_2 : in std_logic_vector(31 downto 0);   -- Second operand
-      alu_control : in std_logic_vector(2 downto 0);      -- ALU operation control
+      alu_control : in std_logic_vector(3 downto 0);      -- ALU operation control
       flags_enable_out : out std_logic_vector(2 downto 0); -- Flags update enable
       result : out std_logic_vector(31 downto 0);         -- ALU result
       flags : out std_logic_vector(2 downto 0)            -- Flags [0]=C,[1]=N,[2]=Z
@@ -154,7 +164,7 @@ begin
   port map(
     alu_operand_1 => alu_operand_1,
     alu_operand_2 => alu_operand_2,
-    alu_control => exe_signals(4 downto 2), -- Direct control from decode stage
+    alu_control => exe_signals(5 downto 2), -- Direct control from decode stage
     flags_enable_out => alu_flags_enable,
     result => alu_result,
     flags => alu_flags
@@ -182,39 +192,24 @@ begin
     branch_taken => branch_taken_sig
   );
 
-  -- EX_MEM Pipeline Register Assignment with Flush Logic
-  -- Total: 114 bits (113 downto 0)
+  -- EX/MEM Pipeline Register Outputs with Flush Logic
+  ex_mem_wb_signals <= wb_signals when flush = '0' else (others => '0');
+  ex_mem_mem_signals <= mem_signals when flush = '0' else (others => '0');
+  ex_mem_output_signal <= output_signal when flush = '0' else '0';
+  ex_mem_branch_taken <= branch_taken_sig;
+  ex_mem_ccr <= ccr_out_sig;
+  ex_mem_rs2_data <= rs2_data;
   
-  -- WB signals (3 bits): 113-111
-  ex_mem_reg(113 downto 111) <= wb_signals when flush = '0' else (others => '0');
-  
-  -- MEM signals (7 bits): 110-104
-  ex_mem_reg(110 downto 104) <= mem_signals when flush = '0' else (others => '0');
-  
-  -- Output signal (1 bit): 103
-  ex_mem_reg(103) <= output_signal when flush = '0' else '0';
-  
-  -- Branch taken (1 bit): 102
-  ex_mem_reg(102) <= branch_taken_sig;
-  
-  -- CCR (3 bits): 101-99
-  ex_mem_reg(101 downto 99) <= ccr_out_sig;
-  
-  -- R[Rs2] data (32 bits): 98-67
-  ex_mem_reg(98 downto 67) <= rs2_data;
-  
-  -- ALU result or INPORT (32 bits): 66-35
+  -- Select between ALU result or INPORT
   with input_signal select
-    ex_mem_reg(66 downto 35) <= alu_result when '0', -- Normal ALU operation
-                                 in_port when '1';    -- IN instruction
+    ex_mem_alu_result <= alu_result when '0',
+                         in_port when '1',
+                         (others => '0') when others;
   
-  -- PC (32 bits): 34-3
-  ex_mem_reg(34 downto 3) <= pc;
-  
-  -- Rd address (3 bits): 2-0
-  ex_mem_reg(2 downto 0) <= rd_addr;
+  ex_mem_pc <= pc;
+  ex_mem_rd_addr <= rd_addr;
 
-  -- Branch enable output: branch_taken AND mem_signals(5) AND mem_signals(3)
+  -- Branch enable output
   branch_enable <= branch_taken_sig and mem_signals(5) and mem_signals(3);
 
 end architecture behavioral;

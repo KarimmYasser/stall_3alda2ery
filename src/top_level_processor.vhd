@@ -89,6 +89,50 @@ architecture structural of top_level_processor is
     end component Decode;
     
     -- Component: ID/EX Pipeline Register
+    component execute_stage is
+    port (
+        clk : in std_logic;
+        rst : in std_logic;
+        flush : in std_logic;
+        predict : in std_logic_vector(1 downto 0);
+        wb_signals : in std_logic_vector(2 downto 0);
+        mem_signals : in std_logic_vector(6 downto 0);
+        exe_signals : in std_logic_vector(5 downto 0);
+        output_signal : in std_logic;
+        input_signal : in std_logic;
+        branch_opcode : in std_logic_vector(3 downto 0);
+        rs1_data : in std_logic_vector(31 downto 0);
+        rs2_data : in std_logic_vector(31 downto 0);
+        index : in std_logic_vector(1 downto 0);
+        pc : in std_logic_vector(31 downto 0);
+        rs1_addr : in std_logic_vector(2 downto 0);
+        rs2_addr : in std_logic_vector(2 downto 0);
+        rd_addr : in std_logic_vector(2 downto 0);
+        immediate : in std_logic_vector(31 downto 0);
+        in_port : in std_logic_vector(31 downto 0);
+        set_carry : in std_logic;
+        ccr_load : in std_logic;
+        ccr_from_stack : in std_logic_vector(2 downto 0);
+        rdst_mem : in std_logic_vector(2 downto 0);
+        rdst_wb : in std_logic_vector(2 downto 0);
+        reg_write_mem : in std_logic;
+        reg_write_wb : in std_logic;
+        mem_forwarded_data : in std_logic_vector(31 downto 0);
+        wb_forwarded_data : in std_logic_vector(31 downto 0);
+        swap_forwarded_data : in std_logic_vector(31 downto 0);
+        ex_mem_wb_signals : out std_logic_vector(2 downto 0);
+        ex_mem_mem_signals : out std_logic_vector(6 downto 0);
+        ex_mem_output_signal : out std_logic;
+        ex_mem_branch_taken : out std_logic;
+        ex_mem_ccr : out std_logic_vector(2 downto 0);
+        ex_mem_rs2_data : out std_logic_vector(31 downto 0);
+        ex_mem_alu_result : out std_logic_vector(31 downto 0);
+        ex_mem_pc : out std_logic_vector(31 downto 0);
+        ex_mem_rd_addr : out std_logic_vector(2 downto 0);
+        branch_enable : out std_logic
+    );
+    end component execute_stage;
+    
     component id_ex_reg_with_feedback is
     PORT (
         clk             : IN  STD_LOGIC;
@@ -126,6 +170,33 @@ architecture structural of top_level_processor is
         rd_addr_out     : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
     );
     end component id_ex_reg_with_feedback;
+    
+    -- Component: EX/MEM Pipeline Register
+    component ex_mem_reg is
+    PORT (
+        clk                  : IN  STD_LOGIC;
+        reset                : IN  STD_LOGIC;
+        write_enable         : IN  STD_LOGIC;
+        wb_signals_in        : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        mem_signals_in       : IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
+        output_signal_in     : IN  STD_LOGIC;
+        branch_taken_in      : IN  STD_LOGIC;
+        ccr_in               : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        wb_signals_out       : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        mem_signals_out      : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        output_signal_out    : OUT STD_LOGIC;
+        branch_taken_out     : OUT STD_LOGIC;
+        ccr_out              : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rs2_data_in          : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        alu_result_in        : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_in                : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_in           : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        rs2_data_out         : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        alu_result_out       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_out               : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_out          : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+    );
+    end component ex_mem_reg;
     
     -- ========== Fetch Stage Signals ==========
     signal fetch_instruction_out : std_logic_vector(26 downto 0);  -- Lower 27 bits
@@ -184,9 +255,47 @@ architecture structural of top_level_processor is
     signal exe_rs2_addr : std_logic_vector(2 downto 0);
     signal exe_rd_addr : std_logic_vector(2 downto 0);
     
+    -- ========== Execute Stage Output Signals ==========
+    signal exe_mem_wb_signals_out : std_logic_vector(2 downto 0);
+    signal exe_mem_mem_signals_out : std_logic_vector(6 downto 0);
+    signal exe_mem_output_signal_out : std_logic;
+    signal exe_mem_branch_taken_out : std_logic;
+    signal exe_mem_ccr_out : std_logic_vector(2 downto 0);
+    signal exe_mem_rs2_data_out : std_logic_vector(31 downto 0);
+    signal exe_mem_alu_result_out : std_logic_vector(31 downto 0);
+    signal exe_mem_pc_out : std_logic_vector(31 downto 0);
+    signal exe_mem_rd_addr_out : std_logic_vector(2 downto 0);
+    signal exe_branch_enable : std_logic;
+    
+    -- ========== EX/MEM Register Output Signals ==========
+    signal mem_wb_signals : std_logic_vector(2 downto 0);
+    signal mem_mem_signals : std_logic_vector(6 downto 0);
+    signal mem_output_signal : std_logic;
+    signal mem_branch_taken : std_logic;
+    signal mem_ccr : std_logic_vector(2 downto 0);
+    signal mem_rs2_data : std_logic_vector(31 downto 0);
+    signal mem_alu_result : std_logic_vector(31 downto 0);
+    signal mem_pc : std_logic_vector(31 downto 0);
+    signal mem_rd_addr : std_logic_vector(2 downto 0);
+    
     -- ========== Placeholder Signals ==========
     signal mem_br_signal : std_logic := '0';
     signal exe_br_signal : std_logic := '0';
+    signal flush_signal : std_logic := '0';
+    signal predict_signal : std_logic_vector(1 downto 0) := "00";
+    signal immediate_signal : std_logic_vector(31 downto 0) := (others => '0');
+    signal in_port_signal : std_logic_vector(31 downto 0) := (others => '0');
+    signal set_carry_signal : std_logic := '0';
+    signal ccr_load_signal : std_logic := '0';
+    signal ccr_from_stack_signal : std_logic_vector(2 downto 0) := "000";
+    signal rdst_mem_signal : std_logic_vector(2 downto 0) := "000";
+    signal rdst_wb_signal : std_logic_vector(2 downto 0) := "000";
+    signal reg_write_mem_signal : std_logic := '0';
+    signal reg_write_wb_signal : std_logic := '0';
+    signal mem_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
+    signal wb_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
+    signal swap_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
+    signal exe_signals_extended : std_logic_vector(5 downto 0);
     
 begin
     
@@ -294,8 +403,77 @@ begin
         rd_addr_out => exe_rd_addr
     );
     
-    -- TODO: Add Execute stage component here
-    -- EXECUTE_STAGE: Execute port map(...);
+    -- ========== EXECUTE STAGE ==========
+    
+    EXECUTE_STAGE_INST: execute_stage port map(
+        clk => clk,
+        rst => reset,
+        flush => flush_signal,
+        predict => predict_signal,
+        wb_signals => exe_WB_flages,
+        mem_signals => exe_MEM_flages,
+        exe_signals => exe_EXE_flages,
+        output_signal => exe_IO_flages(1),
+        input_signal => exe_IO_flages(0),
+        branch_opcode => exe_Branch_Exec,
+        rs1_data => exe_Rrs1,
+        rs2_data => exe_Rrs2,
+        index => exe_index,
+        pc => exe_pc,
+        rs1_addr => exe_rs1_addr,
+        rs2_addr => exe_rs2_addr,
+        rd_addr => exe_rd_addr,
+        immediate => immediate_signal,
+        in_port => in_port_signal,
+        set_carry => set_carry_signal,
+        ccr_load => ccr_load_signal,
+        ccr_from_stack => ccr_from_stack_signal,
+        rdst_mem => rdst_mem_signal,
+        rdst_wb => rdst_wb_signal,
+        reg_write_mem => reg_write_mem_signal,
+        reg_write_wb => reg_write_wb_signal,
+        mem_forwarded_data => mem_forwarded_data_signal,
+        wb_forwarded_data => wb_forwarded_data_signal,
+        swap_forwarded_data => swap_forwarded_data_signal,
+        ex_mem_wb_signals => exe_mem_wb_signals_out,
+        ex_mem_mem_signals => exe_mem_mem_signals_out,
+        ex_mem_output_signal => exe_mem_output_signal_out,
+        ex_mem_branch_taken => exe_mem_branch_taken_out,
+        ex_mem_ccr => exe_mem_ccr_out,
+        ex_mem_rs2_data => exe_mem_rs2_data_out,
+        ex_mem_alu_result => exe_mem_alu_result_out,
+        ex_mem_pc => exe_mem_pc_out,
+        ex_mem_rd_addr => exe_mem_rd_addr_out,
+        branch_enable => exe_branch_enable
+    );
+    
+    -- Connect branch enable to exe_br_signal for feedback to fetch
+    exe_br_signal <= exe_branch_enable;
+    
+    -- ========== EX/MEM PIPELINE REGISTER ==========
+    EX_MEM_REGISTER: ex_mem_reg port map(
+        clk => clk,
+        reset => reset,
+        write_enable => '1',  -- TODO: Connect to EM_enable from decode
+        wb_signals_in => exe_mem_wb_signals_out,
+        mem_signals_in => exe_mem_mem_signals_out,
+        output_signal_in => exe_mem_output_signal_out,
+        branch_taken_in => exe_mem_branch_taken_out,
+        ccr_in => exe_mem_ccr_out,
+        wb_signals_out => mem_wb_signals,
+        mem_signals_out => mem_mem_signals,
+        output_signal_out => mem_output_signal,
+        branch_taken_out => mem_branch_taken,
+        ccr_out => mem_ccr,
+        rs2_data_in => exe_mem_rs2_data_out,
+        alu_result_in => exe_mem_alu_result_out,
+        pc_in => exe_mem_pc_out,
+        rd_addr_in => exe_mem_rd_addr_out,
+        rs2_data_out => mem_rs2_data,
+        alu_result_out => mem_alu_result,
+        pc_out => mem_pc,
+        rd_addr_out => mem_rd_addr
+    );
     
     -- TODO: Add other pipeline stages (Memory, Writeback)
     
