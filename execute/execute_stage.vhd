@@ -30,7 +30,7 @@ entity execute_stage is
     in_port : in std_logic_vector(31 downto 0);          -- Input port data
     
     -- CCR Control
-    ccr_enable : in std_logic;                           -- CCR update enable
+    -- ccr_enable : in std_logic;                           -- CCR update enable
     set_carry : in std_logic;                            -- Set carry flag
     ccr_load : in std_logic;                           -- Return from interrupt
     ccr_from_stack : in std_logic_vector(2 downto 0);         -- Flags to restore on RTI
@@ -55,24 +55,12 @@ architecture behavioral of execute_stage is
 
   component alu is
     port (
-      alu_operand_1 : in std_logic_vector(15 downto 0);          -- First operand
-      alu_operand_2 : in std_logic_vector(15 downto 0);          -- Second operand
-      alu_control : in std_logic_vector(3 downto 0);       -- ALU operation code
+      alu_operand_1 : in std_logic_vector(31 downto 0);   -- First operand
+      alu_operand_2 : in std_logic_vector(31 downto 0);   -- Second operand
+      alu_control : in std_logic_vector(2 downto 0);      -- ALU operation control
       flags_enable_out : out std_logic_vector(2 downto 0); -- Flags update enable
-      result : out std_logic_vector(15 downto 0);          -- ALU result
-      flags : out std_logic_vector(2 downto 0)             -- Flags [C,N,Z]
-    );
-  end component;
-
-  component alu_controller is
-    port (
-      alu_func_signal : in std_logic;                 -- Enable ALU function
-      not_signal : in std_logic;                      -- Enable NOT operation
-      add_offset_signal : in std_logic;               -- Enable add offset
-      pass_data1_signal : in std_logic;               -- Pass operand 1
-      pass_data2_signal : in std_logic;               -- Pass operand 2
-      func : in std_logic_vector(1 downto 0);         -- Function select
-      alu_control : out std_logic_vector(3 downto 0)  -- ALU control output
+      result : out std_logic_vector(31 downto 0);         -- ALU result
+      flags : out std_logic_vector(2 downto 0)            -- Flags [0]=C,[1]=N,[2]=Z
     );
   end component;
 
@@ -107,13 +95,12 @@ architecture behavioral of execute_stage is
   component branch_detection is
     port (
       opcode : in std_logic_vector(3 downto 0);  -- Branch opcode
-      ccr : in std_logic_vector(2 downto 0);     -- Condition flags
+      ccr : in std_logic_vector(2 downto 0);     -- Condition flags [0]=C,[1]=N,[2]=Z
       branch_taken : out std_logic               -- Branch decision
     );
   end component;
 
   -- Internal Signals
-  signal alu_control_sig : std_logic_vector(3 downto 0);       -- ALU control
   signal forward1_signal : std_logic_vector(1 downto 0);          -- Forward control for operand 1
   signal forward2_signal : std_logic_vector(1 downto 0);          -- Forward control for operand 2
   signal ccr_out_sig : std_logic_vector(2 downto 0);           -- CCR output flags
@@ -123,7 +110,7 @@ architecture behavioral of execute_stage is
   signal alu_operand_1 : std_logic_vector(31 downto 0);        -- ALU input 1 (after forwarding)
   signal alu_operand_2 : std_logic_vector(31 downto 0);        -- ALU input 2 (after forwarding)
   signal alu_result : std_logic_vector(31 downto 0);           -- ALU result
-  signal alu_flags : std_logic_vector(2 downto 0);             -- ALU flags output [C,N,Z]
+  signal alu_flags : std_logic_vector(2 downto 0);             -- ALU flags [0]=C,[1]=N,[2]=Z
   signal alu_flags_enable : std_logic_vector(2 downto 0);      -- ALU flags enable
 begin
   -- Forward Unit Instance
@@ -161,24 +148,13 @@ begin
     wb_forwarded_data when "10", -- Forward from WB stage
     (others => '0') when others; -- Default
 
-  -- ALU Controller Instance
-  ALU_CTRL : alu_controller
-  port map(
-    alu_func_signal => exe_signals(4), -- ALU function enable
-    not_signal => '0', -- NOT operation disabled
-    add_offset_signal => '0', -- Add offset disabled
-    pass_data1_signal => '0', -- Pass data 1 disabled
-    pass_data2_signal => '0', -- Pass data 2 disabled
-    func => exe_signals(3 downto 2), -- ALU function
-    alu_control => alu_control_sig
-  );
-
   -- ALU Instance
+  -- Control bits [5:2] from exe_signals passed directly to ALU
   ALU_INST : alu
   port map(
     alu_operand_1 => alu_operand_1,
     alu_operand_2 => alu_operand_2,
-    alu_control => alu_control_sig,
+    alu_control => exe_signals(4 downto 2), -- Direct control from decode stage
     flags_enable_out => alu_flags_enable,
     result => alu_result,
     flags => alu_flags
@@ -189,7 +165,7 @@ begin
   port map(
     rst => rst,
     clk => clk,
-    enable => ccr_enable,
+    enable => exe_signals(5),
     set_carry => set_carry,
     ccr_load => ccr_load,
     ccr_from_stack => ccr_from_stack,

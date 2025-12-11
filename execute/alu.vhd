@@ -1,9 +1,7 @@
--- 000 -> np --  001 -> add -- 010 -> sub -- 011 -> and -- 100 -> inc 
--- 101 -> not -- 110 -> pass_data_1 -- 111 -> pass_data_2 -- 1000 -> add_offset
+-- ALU Operations:
+-- 0: NOP, 1: Add, 2: Sub, 3: AND, 4: Inc, 5: NOT, 6: SETC
 
--- flags enable signal 1 
-
--- Flags: [2]=Carry, [1]=Negative, [0]=Zero
+-- Flags: [0]=Carry, [1]=Negative, [2]=Zero
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -12,84 +10,76 @@ use ieee.std_logic_unsigned.all;
 
 entity alu is
   port (
-    alu_operand_1 : in std_logic_vector(31 downto 0);          -- First operand
-    alu_operand_2 : in std_logic_vector(31 downto 0);          -- Second operand
-    alu_control : in std_logic_vector(3 downto 0);       -- ALU operation control
+    alu_operand_1 : in std_logic_vector(31 downto 0);   -- First operand
+    alu_operand_2 : in std_logic_vector(31 downto 0);   -- Second operand
+    alu_control : in std_logic_vector(2 downto 0);      -- ALU operation control [3:0]
     flags_enable_out : out std_logic_vector(2 downto 0); -- Flags update enable
-    result : out std_logic_vector(31 downto 0);          -- ALU result
-    flags : out std_logic_vector(2 downto 0)             -- Output flags [C,N,Z]
+    result : out std_logic_vector(31 downto 0);         -- ALU result
+    flags : out std_logic_vector(2 downto 0)            -- Output flags [C,N,Z]
   );
 end entity alu;
 
 architecture behavioral of alu is
 begin
   process(alu_operand_1, alu_operand_2, alu_control)
-        VARIABLE temp_result : STD_LOGIC_VECTOR(16 DOWNTO 0); -- Extra bit to handle overflows
-    BEGIN
-        -- Default: no flags enabled
+    variable temp_result : std_logic_vector(32 downto 0); -- Extra bit for carry
+  begin
+    -- Default values
+    flags_enable_out <= "000";
+    flags <= "000";
+    result <= (others => '0');
+    temp_result := (others => '0');
+
+    -- ALU operations based on control bits [3:0]
+    case alu_control(2 downto 0) is
+      when "000" => -- NOP
+        result <= (others => '0');
         flags_enable_out <= "000";
-        flags <= "000";
-        result <= (OTHERS => '0');
-        temp_result := (OTHERS => '0'); -- Initialize the variable
+        
+      when "001" => -- Add
+        temp_result := ('0' & alu_operand_1) + ('0' & alu_operand_2);
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "111"; -- Enable C, N, Z
+        
+      when "010" => -- Subtract
+        temp_result := ('0' & alu_operand_1) - ('0' & alu_operand_2);
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "111"; -- Enable C, N, Z
+        
+      when "011" => -- AND
+        temp_result := ('0' & alu_operand_1) and ('0' & alu_operand_2);
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        
+      when "100" => -- Increment
+        temp_result := ('0' & alu_operand_1) + 1;
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "111"; -- Enable C, N, Z
+        
+      when "101" => -- NOT
+        temp_result := '0' & (not alu_operand_1);
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        
+      when "110" => -- SETC
+        temp_result := '0' & alu_operand_1;
+        result <= temp_result(31 downto 0);
+        flags_enable_out <= "001"; -- Enable only C flag
+        
+      when others => -- Reserved
+        result <= (others => '0');
+        flags_enable_out <= "000";
+    end case;
 
-        -- Check ALU control signals
-        CASE alu_control IS
-            WHEN "0000" => -- No ALU operation
-                flags_enable_out <= "000";
-                flags <= "000";
-                result <= (OTHERS => '0');
-            WHEN "0001" => -- Add operation
-                temp_result := ("0" & alu_operand_1) + ("0" & alu_operand_2); -- Signed addition with overflow handling
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "111"; -- Indicate flags are being updated
+    -- Calculate flags
+    flags(0) <= temp_result(32); -- Carry flag
+    flags(1) <= temp_result(31); -- Negative flag (sign bit)
+    if temp_result(31 downto 0) = x"00000000" then
+      flags(2) <= '1'; -- Zero flag
+    else
+      flags(2) <= '0';
+    end if;
 
-            WHEN "0010" => -- Subtract operation
-                temp_result := ("0" & alu_operand_1) - ("0" & alu_operand_2); -- Signed subtraction
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "111"; -- Indicate flags are being updated
+  end process;
 
-            WHEN "0011" => -- AND operation
-                temp_result := ("0" & alu_operand_1) AND ("0" & alu_operand_2);
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "110"; -- Indicate flags are being updated
-
-            WHEN "0100" => -- Increment operation
-                temp_result := ("0" & alu_operand_1) + 1; -- Increment alu_operand_1
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "111"; -- Indicate flags are being updated
-
-            WHEN "0101" => -- NOT operation
-                temp_result := ("0" & (NOT alu_operand_1)); -- Bitwise NOT of alu_operand_1
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "110"; -- Indicate flags are being updated
-
-            WHEN "0110" => -- Pass data from first input
-                temp_result := ("0" & alu_operand_1);
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "000"; -- Indicate flags are being updated
-
-            WHEN "0111" => -- Pass data from second input
-                temp_result := ("0" & alu_operand_2);
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "000"; -- Indicate flags are being updated
-
-            WHEN "1000" => -- Add offset operation
-                temp_result := ("0" & alu_operand_1) + ("0" & alu_operand_2); -- Signed addition with overflow handling
-                result <= temp_result(15 DOWNTO 0); -- Assign result to lower 8 bits
-                flags_enable_out <= "000"; -- Indicate flags are being updated
-
-            WHEN OTHERS =>
-                flags_enable_out <= "000";
-                flags <= "000";
-                result <= (OTHERS => '0');
-        END CASE;
-
-        IF temp_result(15 DOWNTO 0) = "0000000000000000" THEN
-            flags(2) <= '1'; -- Zero flag
-        END IF;
-        flags(1) <= temp_result(15); -- Negative flag
-        flags(0) <= temp_result(16); -- Carry flag
-
-    END PROCESS;
-
-END behavioral;
+end behavioral;

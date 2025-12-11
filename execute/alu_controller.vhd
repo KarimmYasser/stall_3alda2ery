@@ -10,6 +10,7 @@ entity alu_controller is
     add_offset_signal : in std_logic;               -- Enable add offset operation
     pass_data1_signal : in std_logic;               -- Pass first operand
     pass_data2_signal : in std_logic;               -- Pass second operand
+    setc_signal : in std_logic;                     -- Set carry signal
     func : in std_logic_vector(1 downto 0);         -- ALU function select
     alu_control : out std_logic_vector(3 downto 0)  -- ALU control output
   );
@@ -48,6 +49,9 @@ begin
         ELSIF add_offset_signal = '1' THEN
             -- Add offset operation
             alu_control <= "1000"; -- Output: 1000 for add offset
+        ELSIF setc_signal = '1' THEN
+            -- Set carry operation
+            alu_control <= "1001"; -- Output: 1001 for set carry
         ELSE
             -- Default: No ALU operation
             alu_control <= "0000"; -- No ALU operation
@@ -55,5 +59,4 @@ begin
     END PROCESS;
 END behavioral;
 
--- 0000 -> np --  0001 -> add -- 0010 -> sub -- 0011 -> and -- 0100 -> inc 
--- 0101 -> not -- 0110 -> pass_data_1 -- 0111 -> pass_data_2  -- 1000 -> add_offset
+-- 0000 -> np --  0001 -> add -- 0010 -> sub -- 0011 -> and -- 0100 -> inc --` 0101 -> not -- 0110 -> pass_data_1 -- 0111 -> pass_data_2  -- 1000 -> add_offset -- 1001 -> set_carry

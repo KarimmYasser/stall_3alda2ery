@@ -9,7 +9,7 @@ use ieee.numeric_std.all;
 entity branch_detection is
   port (
     opcode : in std_logic_vector(3 downto 0);     -- Branch operation code
-    ccr : in std_logic_vector(2 downto 0);        -- Condition flags [C,N,Z]
+    ccr : in std_logic_vector(2 downto 0);        -- Condition flags [0]=C,[1]=N,[2]=Z
     branch_taken : out std_logic                  -- '1' if branch taken
   );
 end entity branch_detection;
@@ -21,13 +21,13 @@ begin
   process(opcode, ccr)
   begin
     -- Select the appropriate flag based on opcode(3 downto 2)
-    -- 00: JZ (ccr(0) = Z)
+    -- 00: JZ (ccr(2) = Z)
     -- 01: JN (ccr(1) = N)
-    -- 10: JC (ccr(2) = C)
+    -- 10: JC (ccr(0) = C)
     case opcode(3 downto 2) is
-      when "00" => flag_selected <= ccr(0);  -- JZ
+      when "00" => flag_selected <= ccr(2);  -- JZ
       when "01" => flag_selected <= ccr(1);  -- JN
-      when "10" => flag_selected <= ccr(2);  -- JC
+      when "10" => flag_selected <= ccr(0);  -- JC
       when others => flag_selected <= '0';
     end case;
     
