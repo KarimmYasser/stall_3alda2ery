@@ -13,6 +13,7 @@ entity alu is
     alu_operand_1 : in std_logic_vector(31 downto 0);   -- First operand
     alu_operand_2 : in std_logic_vector(31 downto 0);   -- Second operand
     alu_control : in std_logic_vector(2 downto 0);      -- ALU operation control [3:0]
+    alu_enable : in std_logic;                             -- ALU enable signal
     flags_enable_out : out std_logic_vector(2 downto 0); -- Flags update enable
     result : out std_logic_vector(31 downto 0);         -- ALU result
     flags : out std_logic_vector(2 downto 0)            -- Output flags [C,N,Z]
@@ -31,40 +32,60 @@ begin
     temp_result := (others => '0');
 
     -- ALU operations based on control bits [3:0]
-    case alu_control(2 downto 0) is
-      when "000" => -- NOP
-        result <= (others => '0');
-        flags_enable_out <= "000";
-        
+    case alu_control(2 downto 0) is        
       when "001" => -- Add
         temp_result := ('0' & alu_operand_1) + ('0' & alu_operand_2);
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "111"; -- Enable C, N, Z
+        if(alu_enable = '1') then
+          flags_enable_out <= "111"; -- Enable C, N, Z
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when "010" => -- Subtract
         temp_result := ('0' & alu_operand_1) - ('0' & alu_operand_2);
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "111"; -- Enable C, N, Z
+        if(alu_enable = '1') then
+          flags_enable_out <= "111"; -- Enable C, N, Z
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when "011" => -- AND
         temp_result := ('0' & alu_operand_1) and ('0' & alu_operand_2);
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        if(alu_enable = '1') then
+          flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when "100" => -- Increment
         temp_result := ('0' & alu_operand_1) + 1;
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "111"; -- Enable C, N, Z
+        if(alu_enable = '1') then
+          flags_enable_out <= "111"; -- Enable C, N, Z
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when "101" => -- NOT
         temp_result := '0' & (not alu_operand_1);
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        if(alu_enable = '1') then
+          flags_enable_out <= "110"; -- Enable N, Z (no carry)
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when "110" => -- SETC
         temp_result := '0' & alu_operand_1;
         result <= temp_result(31 downto 0);
-        flags_enable_out <= "001"; -- Enable only C flag
+        if(alu_enable = '1') then
+          flags_enable_out <= "100"; -- Enable C only
+        else
+          flags_enable_out <= "000"; -- No flags updated
+        end if;
         
       when others => -- Reserved
         result <= (others => '0');

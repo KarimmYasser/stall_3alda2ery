@@ -408,8 +408,9 @@ begin
         wb_signals => exe_WB_flages,
         mem_signals => exe_MEM_flages,
         exe_signals => exe_EXE_flages,
-        output_signal => exe_IO_flages(1),
+        output_signal => exe_IO_flages(1), -- also ensure this order of io bits
         input_signal => exe_IO_flages(0),
+        swap_signal => exe_signals_extended, -- mazen, add the swap signal from the id-ex reg here
         branch_opcode => exe_Branch_Exec,
         rs1_data => exe_Rrs1,
         rs2_data => exe_Rrs2,
@@ -420,7 +421,7 @@ begin
         rd_addr => exe_rd_addr,
         immediate => immediate_signal,
         in_port => in_port_signal,
-        set_carry => set_carry_signal,
+        ccr_enable => decode_CCR_enable, -- also ensure this is the ccr enable that is not passing through the reg
         ccr_load => ccr_load_signal,
         ccr_from_stack => ccr_from_stack_signal,
         rdst_mem => rdst_mem_signal,
