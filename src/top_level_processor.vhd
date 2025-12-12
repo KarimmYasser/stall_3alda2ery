@@ -286,6 +286,20 @@ architecture structural of top_level_processor is
     );
     end component memory_unit;
     
+    -- Component: Writeback Stage
+   -- ===============================================
+        component writeback is
+        port(
+            mem_read_data  : in  std_logic_vector(31 downto 0);
+            alu_result     : in  std_logic_vector(31 downto 0);
+            wb_select      : in  std_logic;
+            wb_data        : out std_logic_vector(31 downto 0)
+        );
+        end component writeback;
+
+
+    -- =================================================
+
     -- ========== Fetch Stage Signals ==========
     signal fetch_instruction_out : std_logic_vector(26 downto 0);  -- Lower 27 bits
     signal fetch_opcode_out : std_logic_vector(4 downto 0);        -- Top 5 bits (may be micro)
@@ -408,6 +422,10 @@ architecture structural of top_level_processor is
     signal wb_stage_alu_result : std_logic_vector(31 downto 0);
     signal wb_stage_pc         : std_logic_vector(31 downto 0);
     signal wb_stage_rd_addr    : std_logic_vector(2 downto 0);
+
+    -- ========== Writeback Stage Signals ==========
+    signal wb_data_out : std_logic_vector(31 downto 0);
+    --==============================================
     
 begin
     
@@ -687,7 +705,16 @@ begin
     tb_mem_alu_result <= wb_stage_alu_result;
     tb_mem_rd_addr <= wb_stage_rd_addr;
 
-    -- TODO: Writeback Stage
+    -- Writeback Stage
+
+    WRITEBACK_STAGE_INST: writeback port map(
+        mem_read_data => wb_stage_read_data,
+        alu_result => wb_stage_alu_result,
+        wb_select => wb_stage_wb_signals(2), 
+        -- TODO: MAZEN - Confirm wb_select bit position
+        wb_data => wb_data_out
+    );
+
     
     -- TODO: Extract immediate value from instruction for fetch stage (Fix Placeholder)
 
