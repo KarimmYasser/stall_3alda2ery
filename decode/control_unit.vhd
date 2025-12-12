@@ -247,7 +247,7 @@ begin
                         micro_Stall <= '1';
                         micro_WB_flages(2) <= '1'; --RegWrite
                         micro_CSwap <= '0';
-                        micro_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
+                        micro_EXE_flages(5 downto 2) <= "1111"; -- add ALU operation
                         micro_Micro_inst <= "00000";
                         micro_next <= M_SWAP_1;
                     when M_SWAP_1 =>
@@ -256,7 +256,7 @@ begin
                         micro_WB_flages(2) <= '1'; --RegWrite
                         micro_CSwap <= '1';
                         micro_Micro_inst <= "00000";
-                        micro_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
+                        micro_EXE_flages(5 downto 2) <= "1111"; -- add ALU operation
                         micro_write_in_src2 <= '1'; -- Indicate writing in source 2 register
                         micro_next <= M_IDLE;
                     
@@ -366,7 +366,7 @@ Main_comb :  Process(op_code,data_ready,reset)
                             main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                         when "0111" => --SWAP--
                             main_Stall <= '1';
-                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
+                            main_EXE_flages(5 downto 2) <= "1111"; -- add ALU operation
                             main_WB_flages(2) <= '1'; --RegWrite
                             main_CSwap <= '0';
                             main_forwardEnable <= '0';
