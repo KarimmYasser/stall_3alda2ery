@@ -1469,6 +1469,252 @@ begin
     );
 
     --------------------------------------------------------------------------------
+    -- Test 31: JZ imm - Jump if Zero (Branch Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JZ - Jump if Zero (Taken)");
+    clear_signals;
+    
+    -- Set CCR with Zero flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "100";     -- Zero flag set
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "001";          -- PC-select
+    branch_opcode <= "0011";      -- JZ with branch enable
+    ccr_enable <= '0';
+    immediate <= x"00000008";     -- Jump offset
+    branch_opcode <= "0011";      -- JZ with branch enable (00=JZ, 11=enable+condition)
+    pc <= x"00001E00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "100",        -- Zero flag should persist
+      expected_wb => "001",
+      test_desc => "JZ: Branch taken when Zero flag set (predict='1')"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 32: JZ imm - Jump if Zero (Branch Not Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JZ - Jump if Zero (Not Taken)");
+    clear_signals;
+    
+    -- Set CCR with no Zero flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "011";     -- Negative flag set, Zero clear
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "000";          -- PC-select off
+    branch_opcode <= "0011";      -- JZ with branch enable
+    ccr_enable <= '0';
+    immediate <= x"00000008";     -- Jump offset
+    branch_opcode <= "0011";      -- JZ with branch enable
+    pc <= x"00001F00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "011",
+      expected_wb => "000",
+      test_desc => "JZ: Branch not taken when Zero flag clear (predict='0')"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 33: JN imm - Jump if Negative (Branch Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JN - Jump if Negative (Taken)");
+    clear_signals;
+    
+    -- Set CCR with Negative flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "010";     -- Negative flag set
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "001";          -- PC-select
+    branch_opcode <= "0111";      -- JN with branch enable
+    ccr_enable <= '0';
+    immediate <= x"0000000C";     -- Jump offset
+    branch_opcode <= "0111";      -- JN with branch enable (01=JN, 11=enable+condition)
+    pc <= x"00002000";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "010",        -- Negative flag should persist
+      expected_wb => "001",
+      test_desc => "JN: Branch taken when Negative flag set (predict='1')"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 34: JN imm - Jump if Negative (Branch Not Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JN - Jump if Negative (Not Taken)");
+    clear_signals;
+    
+    -- Set CCR with no Negative flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "101";     -- Zero flag set, Negative clear
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "000";
+    branch_opcode <= "0111";      -- JN with branch enable
+    ccr_enable <= '0';
+    immediate <= x"0000000C";     -- Jump offset
+    branch_opcode <= "0111";      -- JN with branch enable
+    pc <= x"00002100";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "101",
+      expected_wb => "000",
+      test_desc => "JN: Branch not taken when Negative flag clear (predict='0')"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 35: JC imm - Jump if Carry (Branch Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JC - Jump if Carry (Taken)");
+    clear_signals;
+    
+    -- Set CCR with Carry flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "001";     -- Carry flag set
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "001";          -- PC-select
+    branch_opcode <= "0111";      -- JC with branch enable
+    ccr_enable <= '0';
+    immediate <= x"00000010";     -- Jump offset
+    branch_opcode <= "1011";      -- JC with branch enable (10=JC, 11=enable+condition)
+    pc <= x"00002200";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "001",        -- Carry flag should persist
+      expected_wb => "001",
+      test_desc => "JC: Branch taken when Carry flag set (predict='1')"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 36: JC imm - Jump if Carry (Branch Not Taken)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("JC - Jump if Carry (Not Taken)");
+    clear_signals;
+    
+    -- Set CCR with no Carry flag
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- Load CCR with desired flags
+    ccr_load <= '1';
+    ccr_from_stack <= "110";     -- Zero + Negative flags set, Carry clear
+    wait for clk_period;          -- Wait for CCR to update
+    
+    -- Clear signals and set up branch instruction
+    clear_signals;
+    exe_signals <= "000010";      -- Immediate operand
+    mem_signals <= "0000000";
+    wb_signals <= "000";
+    branch_opcode <= "0111";      -- JC with branch enable
+    ccr_enable <= '0';
+    immediate <= x"00000010";     -- Jump offset
+    branch_opcode <= "1011";      -- JC with branch enable
+    pc <= x"00002300";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",
+      expected_ccr => "110",
+      expected_wb => "000",
+      test_desc => "JC: Branch not taken when Carry flag clear (predict='0')"
+    );
+
+    --------------------------------------------------------------------------------
     -- Test Summary
     --------------------------------------------------------------------------------
     write(l, LF & LF);
