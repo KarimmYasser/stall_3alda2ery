@@ -1011,6 +1011,324 @@ begin
     );
 
     --------------------------------------------------------------------------------
+    -- Test 17: ADD Instruction (Positive + Positive)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("ADD - Add Two Positive Values");
+    clear_signals;
+    
+    -- Reset to clear CCR from previous tests
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- ADD rd, rs1, rs2: exe_signals = "100100" (alu_enable=1, alu_op=001, rs2_select=00)
+    exe_signals <= "100100";  -- ALU enable + ADD operation + Rs2 select
+    mem_signals <= "0000000";
+    wb_signals <= "100";      -- Register writeback enabled
+    ccr_enable <= '1';
+    rs1_data <= x"00000010";  -- 16
+    rs2_data <= x"00000020";  -- 32
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "011";
+    pc <= x"00001000";
+    
+    wait for 0 ns;  -- Allow signal assignments to take effect
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000030",  -- 16 + 32 = 48
+      expected_ccr => "000",        -- No flags (positive, non-zero, no carry)
+      expected_wb => "100",
+      test_desc => "ADD should compute 0x10 + 0x20 = 0x30"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 18: ADD Instruction (With Carry)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("ADD - Add with Carry Overflow");
+    clear_signals;
+    
+    exe_signals <= "100100";
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"FFFFFFFF";  -- -1 or max unsigned
+    rs2_data <= x"00000001";  -- 1
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "011";
+    pc <= x"00001100";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",  -- Overflow to 0
+      expected_ccr => "101",        -- Carry and Zero flags set
+      expected_wb => "100",
+      test_desc => "ADD should overflow and set Carry and Zero flags"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 19: SUB Instruction (Positive - Positive)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("SUB - Subtract Two Positive Values");
+    clear_signals;
+    
+    -- Reset CCR
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- SUB rd, rs1, rs2: exe_signals = "101000" (alu_enable=1, alu_op=010, rs2_select=00)
+    exe_signals <= "101000";  -- ALU enable + SUB operation
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"00000050";  -- 80
+    rs2_data <= x"00000030";  -- 48
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "011";
+    pc <= x"00001200";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000020",  -- 80 - 48 = 32
+      expected_ccr => "000",        -- No flags
+      expected_wb => "100",
+      test_desc => "SUB should compute 0x50 - 0x30 = 0x20"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 20: SUB Instruction (Zero Result)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("SUB - Subtract to Zero");
+    clear_signals;
+    
+    exe_signals <= "101000";
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"12345678";
+    rs2_data <= x"12345678";  -- Same value
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "011";
+    pc <= x"00001300";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",  -- Equal values = 0
+      expected_ccr => "100",        -- Zero flag set
+      expected_wb => "100",
+      test_desc => "SUB of equal values should set Zero flag"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 21: AND Instruction
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("AND - Bitwise AND Operation");
+    clear_signals;
+    
+    -- Reset CCR
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- AND rd, rs1, rs2: exe_signals = "101100" (alu_enable=1, alu_op=011, rs2_select=00)
+    exe_signals <= "101100";  -- ALU enable + AND operation
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"FF00FF00";
+    rs2_data <= x"F0F0F0F0";
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "011";
+    pc <= x"00001400";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"F000F000",  -- AND result
+      expected_ccr => "010",        -- Negative flag (MSB=1)
+      expected_wb => "100",
+      test_desc => "AND should compute bitwise AND and set Negative flag"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 22: IADD Instruction (Immediate Add)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("IADD - Add Register and Immediate");
+    clear_signals;
+    
+    -- Reset CCR
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- IADD rd, rs1, imm: exe_signals = "100101" (alu_enable=1, alu_op=001, imm_select=01)
+    exe_signals <= "100101";  -- ALU enable + ADD operation + Immediate select
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"00000100";  -- 256
+    immediate <= x"000000FF"; -- 255
+    rs1_addr <= "001";
+    rd_addr <= "010";
+    pc <= x"00001500";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"000001FF",  -- 256 + 255 = 511
+      expected_ccr => "000",
+      expected_wb => "100",
+      test_desc => "IADD should add register and immediate value"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 23: MOV Instruction (rs1 to rdst)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("MOV - Move Register to Register");
+    clear_signals;
+    
+    -- Reset CCR
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- MOV rd, rs1: Implemented as ADD rs1, 0 -> rd
+    -- exe_signals = "100100" (alu_enable=1, alu_op=001, rs2_select=00)
+    exe_signals <= "100100";
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"ABCD1234";  -- Value to move
+    rs2_data <= x"00000000";  -- Add with 0
+    rs1_addr <= "001";
+    rs2_addr <= "000";        -- R0 (typically zero)
+    rd_addr <= "010";
+    pc <= x"00001600";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"ABCD1234",  -- Same as rs1_data
+      expected_ccr => "010",        -- Negative flag (MSB=1)
+      expected_wb => "100",
+      test_desc => "MOV should transfer rs1 value to rd"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 24: SWAP Instruction - Cycle 1 (Save rs1)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("SWAP - First Cycle (Save Rs1, Write Rs2 to Rs1)");
+    clear_signals;
+    
+    -- Reset CCR
+    rst <= '1';
+    wait for clk_period;
+    rst <= '0';
+    wait for clk_period;
+    
+    -- First cycle: MOV rs2 to rs1 (rs1's original value forwarded to temp)
+    exe_signals <= "111100";  -- PASS 1 operation
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"11111111";  -- Original rs1 value
+    rs2_data <= x"22222222";  -- Value to write to rs1
+    rs1_addr <= "001";        -- Rs1 address
+    rs2_addr <= "010";        -- Rs2 address
+    rd_addr <= "001";         -- Write to rs1 location
+    swap_signal <= '0';       -- Not swap cycle yet
+    pc <= x"00001700";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"11111111",  -- Rs2 value (add 0 to rs2)
+      expected_ccr => "000",        -- Negative flag
+      expected_wb => "100",
+      test_desc => "SWAP Cycle 1: Write rs2 value to rs1 location"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 25: SWAP Instruction - Cycle 2 (Write saved value to Rs2)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("SWAP - Second Cycle (Write Saved Rs1 to Rs2)");
+    clear_signals;
+    
+    -- Second cycle: Write saved rs1 value to rs2
+    exe_signals <= "111100";
+    mem_signals <= "0000000";
+    wb_signals <= "100";
+    ccr_enable <= '1';
+    rs1_data <= x"22222222";  -- Updated rs1 (now has rs2's old value)
+    rs2_data <= x"00000000";  -- Don't care
+    rs1_addr <= "001";
+    rs2_addr <= "010";
+    rd_addr <= "010";         -- Write to rs2 location
+    swap_signal <= '1';       -- SWAP signal activated
+    -- swap_forwarded_data <= x"11111111";  -- Original rs1 value from cycle 1
+    swap_forwarded_data <= ex_mem_rs2_data;  -- Original rs1 value from cycle 1
+    pc <= x"00001800";
+    
+    wait for 0 ns;
+    print_inputs;
+    print_forwarding_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"22222222",  -- Original rs1 value from swap forwarding
+      expected_ccr => "000",        -- Negative flag
+      expected_wb => "100",
+      test_desc => "SWAP Cycle 2: Write original rs1 value to rs2 location"
+    );
+
+    --------------------------------------------------------------------------------
     -- Test Summary
     --------------------------------------------------------------------------------
     write(l, LF & LF);

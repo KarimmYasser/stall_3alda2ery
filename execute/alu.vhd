@@ -86,6 +86,10 @@ begin
         else
           flags_enable_out <= "000"; -- No flags updated
         end if;
+      
+      when "111" => -- PASS 1
+        result <= alu_operand_1; -- Pass through
+        flags_enable_out <= "000"; -- No flags updated
         
       when others => -- Reserved
         result <= (others => '0');
