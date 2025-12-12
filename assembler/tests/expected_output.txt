@@ -1,0 +1,131 @@
+# Expected machine code for test_all_instructions.asm
+# Format: HEX_CODE  ; Description
+# ================================================================================
+
+# FORMAT A: No Operands
+00000000  ; NOP - opcode 00000, all zeros
+10000000  ; SETC - opcode 00010
+
+# FORMAT B: Single Register (Rdst in bits 8-6)
+18000000  ; INC R0 - opcode 00011, R0=000
+180001C0  ; INC R7 - opcode 00011, R7=111 at bits 8-6
+20000040  ; NOT R1 - opcode 00100, R1=001
+20000180  ; NOT R6 - opcode 00100, R6=110
+88000080  ; IN R2 - opcode 10001, R2=010
+800000C0  ; OUT R3 - opcode 10000, R3=011
+90000100  ; PUSH R4 - opcode 10010, R4=100
+98000140  ; POP R5 - opcode 10011, R5=101
+
+# FORMAT C: Two Registers (Rsrc in Rs1, Rdst in Rdst)
+30000040  ; MOV R0, R1 - opcode 00110, Rs1=R0=000, Rdst=R1=001
+30000038  ; MOV R7, R0 - opcode 00110, Rs1=R7=111, Rdst=R0=000
+380000D0  ; SWAP R2, R3 - opcode 00111, Rs1=R2=010, Rdst=R3=011
+380001A8  ; SWAP R5, R6 - opcode 00111, Rs1=R5=101, Rdst=R6=110
+
+# FORMAT D: Three Registers
+4800000A  ; ADD R0, R1, R2 - opcode 01001, Rdst=R0, Rs1=R1, Rs2=R2
+480001EB  ; ADD R7, R5, R3 - opcode 01001, Rdst=R7, Rs1=R5, Rs2=R3
+50000053  ; SUB R1, R2, R3 - opcode 01010, Rdst=R1, Rs1=R2, Rs2=R3
+5000012E  ; SUB R4, R5, R6 - opcode 01010, Rdst=R4, Rs1=R5, Rs2=R6
+5800009C  ; AND R2, R3, R4 - opcode 01011, Rdst=R2, Rs1=R3, Rs2=R4
+58000039  ; AND R0, R7, R1 - opcode 01011, Rdst=R0, Rs1=R7, Rs2=R1
+
+# FORMAT E: LDM with immediate (2 words each)
+28000000  ; LDM R0, 0 - Word 1
+00000000  ; LDM R0, 0 - Word 2: immediate = 0
+28000040  ; LDM R1, 100 - Word 1
+00000064  ; LDM R1, 100 - Word 2: immediate = 100 = 0x64
+28000080  ; LDM R2, 65535 - Word 1
+FFFFFFFF  ; LDM R2, 65535 - Word 2: sign extended 0xFFFF
+280000C0  ; LDM R3, -1 - Word 1
+FFFFFFFF  ; LDM R3, -1 - Word 2: -1 sign extended
+28000100  ; LDM R4, -100 - Word 1
+FFFFFF9C  ; LDM R4, -100 - Word 2: -100 sign extended
+28000140  ; LDM R5, 0xFF - Word 1
+000000FF  ; LDM R5, 0xFF - Word 2: 255
+28000180  ; LDM R6, 0x1234 - Word 1
+00001234  ; LDM R6, 0x1234 - Word 2: 0x1234
+280001C0  ; LDM R7, 1 - Word 1
+00000001  ; LDM R7, 1 - Word 2: 1
+
+# FORMAT F: IADD with immediate (2 words each)
+40000008  ; IADD R0, R1, 10 - Word 1
+0000000A  ; IADD R0, R1, 10 - Word 2: 10 = 0x0A
+40000098  ; IADD R2, R3, -5 - Word 1
+FFFFFFFB  ; IADD R2, R3, -5 - Word 2: -5 sign extended
+40000128  ; IADD R4, R5, 0xFF - Word 1
+000000FF  ; IADD R4, R5, 0xFF - Word 2: 255
+400001B8  ; IADD R6, R7, 1000 - Word 1
+000003E8  ; IADD R6, R7, 1000 - Word 2: 1000 = 0x3E8
+400001C0  ; IADD R7, R0, 0 - Word 1
+00000000  ; IADD R7, R0, 0 - Word 2: 0
+
+# FORMAT G: LDD with offset (2 words each)
+A0000008  ; LDD R0, 0(R1) - Word 1
+00000000  ; LDD R0, 0(R1) - Word 2: offset = 0
+A0000098  ; LDD R2, 100(R3) - Word 1
+00000064  ; LDD R2, 100(R3) - Word 2: offset = 100
+A0000128  ; LDD R4, -10(R5) - Word 1
+FFFFFFF6  ; LDD R4, -10(R5) - Word 2: offset = -10 sign extended
+A00001B8  ; LDD R6, 0x10(R7) - Word 1
+00000010  ; LDD R6, 0x10(R7) - Word 2: offset = 16
+
+# FORMAT H: STD with offset (2 words each)
+A8000008  ; STD R0, 0(R1) - Word 1
+00000000  ; STD R0, 0(R1) - Word 2: offset = 0
+A8000098  ; STD R2, 50(R3) - Word 1
+00000032  ; STD R2, 50(R3) - Word 2: offset = 50
+A8000128  ; STD R4, -20(R5) - Word 1
+FFFFFFEC  ; STD R4, -20(R5) - Word 2: offset = -20 sign extended
+A80001B8  ; STD R6, 0x100(R7) - Word 1
+00000100  ; STD R6, 0x100(R7) - Word 2: offset = 256
+
+# FORMAT J: INT (index field encoding)
+C4000000  ; INT 0 - opcode 11000, index = 0+2 = 2 = 10 binary
+C6000000  ; INT 1 - opcode 11000, index = 1+2 = 3 = 11 binary
+
+# FORMAT A: Return instructions
+B8000000  ; RET - opcode 10111
+C8000000  ; RTI - opcode 11001
+
+# Labels section - START: at address 66
+28000000  ; LDM R0, 5 - Word 1
+00000005  ; LDM R0, 5 - Word 2
+28000040  ; LDM R1, 0 - Word 1
+00000000  ; LDM R1, 0 - Word 2
+
+# LOOP: at address 70
+48000048  ; ADD R1, R1, R0
+18000000  ; INC R0
+60000000  ; JZ EXIT - Word 1
+00000056  ; JZ EXIT - Word 2: EXIT = 86 = 0x56
+68000000  ; JN NEGATIVE - Word 1
+00000050  ; JN NEGATIVE - Word 2: NEGATIVE = 80 = 0x50
+70000000  ; JC CARRY - Word 1
+00000053  ; JC CARRY - Word 2: CARRY = 83 = 0x53
+78000000  ; JMP LOOP - Word 1
+00000046  ; JMP LOOP - Word 2: LOOP = 70 = 0x46
+
+# NEGATIVE: at address 80
+20000040  ; NOT R1
+78000000  ; JMP EXIT - Word 1
+00000056  ; JMP EXIT - Word 2
+
+# CARRY: at address 83
+10000000  ; SETC
+78000000  ; JMP EXIT - Word 1
+00000056  ; JMP EXIT - Word 2
+
+# EXIT: at address 86
+80000040  ; OUT R1
+B0000000  ; CALL SUBROUTINE - Word 1
+0000005A  ; CALL SUBROUTINE - Word 2: SUBROUTINE = 90 = 0x5A
+08000000  ; HLT
+
+# SUBROUTINE: at address 90
+90000000  ; PUSH R0
+90000040  ; PUSH R1
+48000001  ; ADD R0, R0, R1
+98000040  ; POP R1
+98000000  ; POP R0
+B8000000  ; RET
