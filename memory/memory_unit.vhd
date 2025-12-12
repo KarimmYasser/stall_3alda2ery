@@ -14,6 +14,10 @@ use IEEE.numeric_std.all;
 use work.memory_interface_pkg.all;
 
 entity memory_unit is
+    generic (
+        INIT_FILENAME : string := "memory_init.txt";
+        MEMORY_DEPTH  : integer := 262144
+    );
     port(
         -- Clock and reset
         clk     : in std_logic;
@@ -29,6 +33,10 @@ architecture Structural of memory_unit is
     
     -- RAM component
     component ram is
+        generic (
+            INIT_FILENAME : string := "memory_init.txt";
+            MEMORY_DEPTH  : integer := 262144
+        );
         port(
             clk         : in  std_logic;
             reset       : in  std_logic;
@@ -44,6 +52,10 @@ begin
     
     -- RAM instance - connect record fields to RAM ports
     RAM_INST: ram
+        generic map (
+            INIT_FILENAME => INIT_FILENAME,
+            MEMORY_DEPTH  => MEMORY_DEPTH
+        )
         port map(
             clk         => clk,
             reset       => reset,

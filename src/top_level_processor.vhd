@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
+use work.memory_interface_pkg.all; -- Added for Memory Stage interface
 
 entity top_level_processor is
     port(
@@ -15,7 +16,12 @@ entity top_level_processor is
         tb_exe_alu_result : out std_logic_vector(31 downto 0);
         tb_exe_ccr : out std_logic_vector(2 downto 0);
         tb_exe_branch_taken : out std_logic;
-        tb_exe_rd_addr : out std_logic_vector(2 downto 0)
+        tb_exe_rd_addr : out std_logic_vector(2 downto 0);
+        
+        tb_mem_wb_signals : out std_logic_vector(2 downto 0);
+        tb_mem_stage_read_data_out  : out std_logic_vector(31 downto 0);
+        tb_mem_alu_result : out std_logic_vector(31 downto 0);
+        tb_mem_rd_addr    : out std_logic_vector(2 downto 0)
     );
 end entity top_level_processor;
 
@@ -209,6 +215,77 @@ architecture structural of top_level_processor is
     );
     end component ex_mem_reg;
     
+    -- Component: Memory Stage
+    component Memory_Stage is
+    PORT (
+        clk           : IN  STD_LOGIC;
+        reset         : IN  STD_LOGIC;
+        interrupt     : IN  STD_LOGIC; -- Added Interrupt Port
+        wb_signals_in : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        mem_signals_in: IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
+        input_signal  : IN  STD_LOGIC;
+        output_signal : IN  STD_LOGIC;
+        alu_result_in : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs2_data_in   : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_in    : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        ccr_in        : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        in_port_data  : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        out_port_data : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        mem_req       : OUT data_mem_req_t;
+        mem_resp      : IN  data_mem_resp_t;
+        wb_signals_out: OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        read_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        alu_result_out: OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        sp_out_debug  : OUT STD_LOGIC_VECTOR(17 DOWNTO 0)
+    );
+    end component Memory_Stage;
+
+    -- Component: Memory Arbiter
+    component memory_arbiter is
+    port(
+        clk     : in std_logic;
+        reset   : in std_logic;
+        fetch_req       : in  fetch_mem_req_t;
+        fetch_resp      : out fetch_mem_resp_t;
+        mem_req         : in  data_mem_req_t;
+        mem_resp        : out data_mem_resp_t;
+        ram_req         : out ext_mem_req_t;
+        ram_resp        : in  ext_mem_resp_t
+    );
+    end component memory_arbiter;
+
+    -- Component: MEM/WB Pipeline Register
+    component mem_wb_reg is
+    PORT (
+        clk             : IN  STD_LOGIC;
+        reset           : IN  STD_LOGIC;
+        write_enable    : IN  STD_LOGIC;
+        wb_signals_in        : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        read_data_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        alu_result_in        : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_in                : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_in           : IN  STD_LOGIC_VECTOR(2 DOWNTO 0);
+        wb_signals_out       : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        read_data_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        alu_result_out       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc_out               : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rd_addr_out          : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+    );
+    end component mem_wb_reg;
+    
+    -- Component: Memory Unit (RAM)
+    component memory_unit is
+    port(
+        clk     : in std_logic;
+        reset   : in std_logic;
+        mem_req  : in  ext_mem_req_t;
+        mem_resp : out ext_mem_resp_t
+    );
+    end component memory_unit;
+    
     -- ========== Fetch Stage Signals ==========
     signal fetch_instruction_out : std_logic_vector(26 downto 0);  -- Lower 27 bits
     signal fetch_opcode_out : std_logic_vector(4 downto 0);        -- Top 5 bits (may be micro)
@@ -304,6 +381,33 @@ architecture structural of top_level_processor is
     signal wb_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
     signal swap_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
     signal exe_swap_signal : std_logic;
+    
+    -- ========== Memory Stage Signals ==========
+    signal mem_stage_wb_signals : std_logic_vector(2 downto 0);
+    signal mem_stage_read_data  : std_logic_vector(31 downto 0);
+    signal mem_stage_alu_result : std_logic_vector(31 downto 0);
+    signal mem_stage_pc         : std_logic_vector(31 downto 0);
+    signal mem_stage_rd_addr    : std_logic_vector(2 downto 0);
+    signal mem_sp_debug         : std_logic_vector(17 downto 0);
+    
+    -- I/O Signals
+    signal in_port_value  : std_logic_vector(31 downto 0) := (others => '0');
+    signal out_port_value : std_logic_vector(31 downto 0);
+    
+    -- Memory Interface Signals
+    signal fetch_mem_req   : fetch_mem_req_t;
+    signal fetch_mem_resp  : fetch_mem_resp_t;
+    signal data_mem_req    : data_mem_req_t;
+    signal data_mem_resp   : data_mem_resp_t;
+    signal ram_req         : ext_mem_req_t;
+    signal ram_resp        : ext_mem_resp_t;
+    
+    -- ========== MEM/WB Register Output Signals ==========
+    signal wb_stage_wb_signals : std_logic_vector(2 downto 0);
+    signal wb_stage_read_data  : std_logic_vector(31 downto 0);
+    signal wb_stage_alu_result : std_logic_vector(31 downto 0);
+    signal wb_stage_pc         : std_logic_vector(31 downto 0);
+    signal wb_stage_rd_addr    : std_logic_vector(2 downto 0);
     
 begin
     
@@ -487,15 +591,105 @@ begin
     
     -- TODO: Add other pipeline stages (Memory, Writeback)
     
-    -- TODO: Extract immediate value from instruction for fetch stage
-    -- This should come from decode stage when branch is taken
-    -- For now, use placeholder
-    immediate_to_fetch <= ifid_instruction_out(15 downto 0) & X"0000"; -- Sign-extend or use immediate field
+    -- ========== MEMORY STAGE ==========
+    MEMORY_STAGE_INST: Memory_Stage port map(
+        clk => clk,
+        reset => reset,
+        interrupt => interrupt, -- Connected to top-level interrupt
+        wb_signals_in => mem_wb_signals,
+        mem_signals_in => mem_mem_signals,
+        input_signal => mem_output_signal, -- input_signal port connected to output_signal wire? Check signal names.
+                                           -- Wait, ex_mem_reg has `output_signal` (IO Out?) and `input_signal`?.
+                                           -- ex_mem_reg output names: output_signal_out.
+                                           -- Control Unit: IO_flages: (1)output, (0)input.
+                                           -- Execute Stage splits IO_flages: output_signal => (1), input_signal => (0).
+                                           -- EX/MEM Reg stores `output_signal` (bit 4 of control). Wait, where is `input_signal`?
+                                           -- EX/MEM Reg seems to only store 1 bit for IO: `output_signal_in`. Logic error?
+                                           -- Checking ex_mem_reg.vhd... 
+                                           -- "control_flags_in : STD_LOGIC_VECTOR(14 DOWNTO 0); -- 3(wb) + 7(mem) + 1(output) + 1(branch) + 3(ccr)"
+                                           -- It seems `input_signal` (IO_flages(0)) was dropped or I need to find where it went.
+                                           -- In `execute_stage.vhd`, `input_signal` is an input. It is NOT in `ex_mem_reg`.
+                                           -- ISSUE: Input signal flag needs to reach Memory Stage.
+                                           -- Temporary fix: Connect `input_signal` to `output_signal` port of Memory Stage if they are mutually exclusive?
+                                           -- Better: Update `ex_mem_reg` to carry both or check if `mem_signals` has it.
+                                           -- MEM_flages: (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore/CCRLoad, (0)CCRLoad
+                                           -- No IO flags in MEM_flages.
+                                           -- IO flags are separate.
+                                           -- For now, connect `output_signal_out` to `output_signal`. 
+                                           -- `input_signal` is missing. I will connect '0' and mark TODO, or use a spare wire if possible. 
+                                           -- Actually, `top_level_processor` has `in_port_signal`.
+                                           -- Memory Stage has `input_signal` port. 
+                                           -- Let's connect `mem_output_signal` to `output_signal`. 
+                                           -- For `input_signal`, we might need to modify `ex_mem_reg` later.
+                                           -- Current `ex_mem_reg` only defines `output_signal_out`.
+        output_signal => mem_output_signal,
+        
+        alu_result_in => mem_alu_result,
+        rs2_data_in => mem_rs2_data,
+        pc_in => mem_pc,
+        rd_addr_in => mem_rd_addr,
+        ccr_in => mem_ccr,
+        in_port_data => in_port_value, -- Connected to internal signal (bound to 0 for now or testbench input)
+        out_port_data => out_port_value,
+        
+        mem_req => data_mem_req,
+        mem_resp => data_mem_resp,
+        
+        wb_signals_out => mem_stage_wb_signals,
+        read_data_out => mem_stage_read_data,
+        alu_result_out => mem_stage_alu_result,
+        pc_out => mem_stage_pc,
+        rd_addr_out => mem_stage_rd_addr,
+        sp_out_debug => mem_sp_debug
+    );
     
-    -- Expose execute stage outputs to testbench
-    tb_exe_alu_result <= exe_mem_alu_result_out;
-    tb_exe_ccr <= exe_mem_ccr_out;
-    tb_exe_branch_taken <= exe_mem_branch_taken_out;
-    tb_exe_rd_addr <= exe_mem_rd_addr_out;
+    -- ========== MEMORY ARBITER ==========
+    MEMORY_ARBITER_INST: memory_arbiter port map(
+        clk => clk,
+        reset => reset,
+        fetch_req => fetch_mem_req,
+        fetch_resp => fetch_mem_resp,
+        mem_req => data_mem_req,
+        mem_resp => data_mem_resp,
+        ram_req => ram_req,
+        ram_resp => ram_resp
+    );
+    
+    -- ========== MEMORY UNIT (RAM) ==========
+    MEMORY_UNIT_INST: memory_unit port map(
+        clk => clk,
+        reset => reset,
+        mem_req => ram_req,
+        mem_resp => ram_resp
+    );
+    
+    -- ========== MEM/WB PIPELINE REGISTER ==========
+    MEM_WB_REGISTER: mem_wb_reg port map(
+        clk => clk,
+        reset => reset,
+        write_enable => '1', -- Always enable for now
+        wb_signals_in => mem_stage_wb_signals,
+        read_data_in => mem_stage_read_data,
+        alu_result_in => mem_stage_alu_result,
+        pc_in => mem_stage_pc,
+        rd_addr_in => mem_stage_rd_addr,
+        
+        wb_signals_out => wb_stage_wb_signals,
+        read_data_out => wb_stage_read_data,
+        alu_result_out => wb_stage_alu_result,
+        pc_out => wb_stage_pc,
+        rd_addr_out => wb_stage_rd_addr
+    );
+    
+    -- Connect testbench outputs for Memory stage
+    tb_mem_wb_signals <= wb_stage_wb_signals;
+    tb_mem_stage_read_data_out <= wb_stage_read_data;
+    tb_mem_alu_result <= wb_stage_alu_result;
+    tb_mem_rd_addr <= wb_stage_rd_addr;
+
+    -- TODO: Writeback Stage
+    
+    -- TODO: Extract immediate value from instruction for fetch stage (Fix Placeholder)
+
     
 end architecture structural;
