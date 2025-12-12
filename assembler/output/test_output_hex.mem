@@ -1,0 +1,100 @@
+// Machine code generated from: ..\tests\test_all_instructions.asm
+// Total words: 96
+// Format: ADDR | HEX | Source
+//
+0000  00000000  ; NOP                     ; Test NOP
+0001  10000000  ; SETC                    ; Test SETC
+0002  18000000  ; INC R0                  ; INC with R0
+0003  180001C0  ; INC R7                  ; INC with R7
+0004  20000040  ; NOT R1                  ; NOT with R1
+0005  20000180  ; NOT R6                  ; NOT with R6
+0006  88000080  ; IN R2                   ; IN with R2
+0007  800000C0  ; OUT R3                  ; OUT with R3
+0008  90000100  ; PUSH R4                 ; PUSH with R4
+0009  98000140  ; POP R5                  ; POP with R5
+0010  30000040  ; MOV R0, R1              ; MOV R0 to R1
+0011  30000038  ; MOV R7, R0              ; MOV R7 to R0
+0012  380000D0  ; SWAP R2, R3             ; SWAP R2 and R3
+0013  380001A8  ; SWAP R5, R6             ; SWAP R5 and R6
+0014  4800000A  ; ADD R0, R1, R2          ; ADD R1 + R2 -> R0
+0015  480001EB  ; ADD R7, R5, R3          ; ADD R5 + R3 -> R7
+0016  50000053  ; SUB R1, R2, R3          ; SUB R2 - R3 -> R1
+0017  5000012E  ; SUB R4, R5, R6          ; SUB R5 - R6 -> R4
+0018  5800009C  ; AND R2, R3, R4          ; AND R3 & R4 -> R2
+0019  58000039  ; AND R0, R7, R1          ; AND R7 & R1 -> R0
+0020  28000000  ; LDM R0, 0               ; Load 0
+0021  00000000  ;   ; immediate/offset
+0022  28000040  ; LDM R1, 100             ; Load 100 decimal
+0023  00000064  ;   ; immediate/offset
+0024  28000080  ; LDM R2, 65535           ; Load max 16-bit unsigned
+0025  FFFFFFFF  ;   ; immediate/offset
+0026  280000C0  ; LDM R3, -1              ; Load -1 (all 1s)
+0027  FFFFFFFF  ;   ; immediate/offset
+0028  28000100  ; LDM R4, -100            ; Load negative number
+0029  FFFFFF9C  ;   ; immediate/offset
+0030  28000140  ; LDM R5, 0xFF            ; Load hex value 255
+0031  000000FF  ;   ; immediate/offset
+0032  28000180  ; LDM R6, 0x1234          ; Load hex value 0x1234
+0033  00001234  ;   ; immediate/offset
+0034  280001C0  ; LDM R7, 1               ; Load 1
+0035  00000001  ;   ; immediate/offset
+0036  40000008  ; IADD R0, R1, 10         ; R0 = R1 + 10
+0037  0000000A  ;   ; immediate/offset
+0038  40000098  ; IADD R2, R3, -5         ; R2 = R3 + (-5)
+0039  FFFFFFFB  ;   ; immediate/offset
+0040  40000128  ; IADD R4, R5, 0xFF       ; R4 = R5 + 255
+0041  000000FF  ;   ; immediate/offset
+0042  400001B8  ; IADD R6, R7, 1000       ; R6 = R7 + 1000
+0043  000003E8  ;   ; immediate/offset
+0044  400001C0  ; IADD R7, R0, 0          ; R7 = R0 + 0
+0045  00000000  ;   ; immediate/offset
+0046  A0000008  ; LDD R0, 0(R1)           ; R0 = M[R1 + 0]
+0047  00000000  ;   ; immediate/offset
+0048  A0000098  ; LDD R2, 100(R3)         ; R2 = M[R3 + 100]
+0049  00000064  ;   ; immediate/offset
+0050  A0000128  ; LDD R4, -10(R5)         ; R4 = M[R5 + (-10)]
+0051  FFFFFFF6  ;   ; immediate/offset
+0052  A00001B8  ; LDD R6, 0x10(R7)        ; R6 = M[R7 + 16]
+0053  00000010  ;   ; immediate/offset
+0054  A8000008  ; STD R0, 0(R1)           ; M[R1 + 0] = R0
+0055  00000000  ;   ; immediate/offset
+0056  A8000098  ; STD R2, 50(R3)          ; M[R3 + 50] = R2
+0057  00000032  ;   ; immediate/offset
+0058  A8000128  ; STD R4, -20(R5)         ; M[R5 + (-20)] = R4
+0059  FFFFFFEC  ;   ; immediate/offset
+0060  A80001B8  ; STD R6, 0x100(R7)       ; M[R7 + 256] = R6
+0061  00000100  ;   ; immediate/offset
+0062  C4000000  ; INT 0                   ; Software interrupt 0
+0063  C6000000  ; INT 1                   ; Software interrupt 1
+0064  B8000000  ; RET                     ; Return from subroutine
+0065  C8000000  ; RTI                     ; Return from interrupt
+0066  28000000  ; LDM R0, 5           ; Counter = 5
+0067  00000005  ;   ; immediate/offset
+0068  28000040  ; LDM R1, 0           ; Sum = 0
+0069  00000000  ;   ; immediate/offset
+0070  48000048  ; ADD R1, R1, R0      ; Sum += Counter
+0071  18000000  ; INC R0              ; Counter++
+0072  60000000  ; JZ EXIT             ; If zero, exit loop
+0073  00000056  ;   ; immediate/offset
+0074  68000000  ; JN NEGATIVE         ; If negative, go to NEGATIVE
+0075  00000050  ;   ; immediate/offset
+0076  70000000  ; JC CARRY            ; If carry, go to CARRY
+0077  00000053  ;   ; immediate/offset
+0078  78000000  ; JMP LOOP            ; Continue loop
+0079  00000046  ;   ; immediate/offset
+0080  20000040  ; NOT R1              ; Complement sum
+0081  78000000  ; JMP EXIT            ; Go to exit
+0082  00000056  ;   ; immediate/offset
+0083  10000000  ; SETC                ; Set carry flag
+0084  78000000  ; JMP EXIT            ; Go to exit
+0085  00000056  ;   ; immediate/offset
+0086  80000040  ; OUT R1              ; Output result
+0087  B0000000  ; CALL SUBROUTINE     ; Call subroutine
+0088  0000005A  ;   ; immediate/offset
+0089  08000000  ; HLT                 ; Halt
+0090  90000000  ; PUSH R0             ; Save R0
+0091  90000040  ; PUSH R1             ; Save R1
+0092  48000001  ; ADD R0, R0, R1      ; Some operation
+0093  98000040  ; POP R1              ; Restore R1
+0094  98000000  ; POP R0              ; Restore R0
+0095  B8000000  ; RET                 ; Return
