@@ -2,7 +2,7 @@
 
 formats = {
     "A": ["opcode"],                                    # NOP, HLT, SETC, RET, RTI
-    "B": ["opcode", "rdst"],                            # INC, NOT, OUT, IN, PUSH, POP
+    "B": ["opcode", "rdst"],                            # INC, NOT, IN , POP
     "C": ["opcode", "rdst", "rsrc"],                    # MOV, SWAP
     "D": ["opcode", "rdst", "rsrc1", "rsrc2"],          # ADD, SUB, AND
     "E": ["opcode", "rdst", "immediate"],               # LDM
@@ -11,6 +11,7 @@ formats = {
     "H": ["opcode", "rsrc1", "offset", "rsrc2"],        # STD  -> STD Rsrc1, offset(Rsrc2)
     "I": ["opcode", "address"],                         # JZ, JN, JC, JMP, CALL
     "J": ["opcode", "index"],                           # INT
+    "M": ["opcode","rsrc2"],                            # OUT , PUSH
 }
 
 instruction_map = {
@@ -33,9 +34,9 @@ instruction_map = {
     "JMP":  {"opcode": "01111", "num_words": 2, "format": "I"},
     
     # Group 1: Format Type Instructions (Bit 4 = 1)
-    "OUT":  {"opcode": "10000", "num_words": 1, "format": "B"},
+    "OUT":  {"opcode": "10000", "num_words": 1, "format": "M"},
     "IN":   {"opcode": "10001", "num_words": 1, "format": "B"},
-    "PUSH": {"opcode": "10010", "num_words": 1, "format": "B"},
+    "PUSH": {"opcode": "10010", "num_words": 1, "format": "M"},
     "POP":  {"opcode": "10011", "num_words": 1, "format": "B"},
     "LDD":  {"opcode": "10100", "num_words": 2, "format": "G"},
     "STD":  {"opcode": "10101", "num_words": 2, "format": "H"},
@@ -169,7 +170,7 @@ def encode_instruction(instruction, operands, symbol_table=None):
         pass
     
     elif fmt == "B":
-        # Single register: INC, NOT, OUT, IN, PUSH, POP
+        # Single register: INC, NOT, IN, PUSH
         rdst = register_map[operands[0]]
     
     elif fmt == "C":
@@ -217,6 +218,10 @@ def encode_instruction(instruction, operands, symbol_table=None):
         # index = user_value + 2, stored in bits 26-25
         index_value = int_index + 2
         index_bits = format(index_value, '02b')
+
+    elif fmt == "M":
+        # OUT , PUSH : single register operand
+        rs2 = register_map[operands[0]]
     
     # Build Word 1
     word1 = opcode + index_bits + dont_care + rdst + rs1 + rs2
