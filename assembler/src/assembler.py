@@ -203,8 +203,8 @@ def encode_instruction(instruction, operands, symbol_table=None):
     
     elif fmt == "H":
         # STD Rsrc1, offset(Rsrc2) -> operands = [Rsrc2, offset, Rsrc1]
-        rdst = register_map[operands[2]]  # Rsrc1 (source data)
-        rs1 = register_map[operands[0]]   # Rsrc2 (base address)
+        rs2 = register_map[operands[0]]  # Rsrc1 (source data)
+        rs1 = register_map[operands[2]]   # Rsrc2 (base address)
         # Offset goes in word 2
     
     elif fmt == "I":
