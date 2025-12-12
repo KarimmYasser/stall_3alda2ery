@@ -35,6 +35,7 @@ architecture testbench of tb_decode is
             MEM_flages_out: out std_logic_vector(6 downto 0);
             IO_flages_out: out std_logic_vector(1 downto 0);
             Branch_Exec_out: out std_logic_vector(3 downto 0);
+            CSwap_out: out std_logic;
             CCR_enable_out: out std_logic;
             Imm_hazard_out: out std_logic;
             FU_enable_out: out std_logic;
@@ -102,7 +103,7 @@ architecture testbench of tb_decode is
         signal p_mw_enable : in std_logic;
         signal p_branch_decode : in std_logic;
         signal p_wb_flages : in std_logic_vector(2 downto 0);
-        signal p_exe_flages : in std_logic_vector(4 downto 0);
+        signal p_exe_flages : in std_logic_vector(5 downto 0);
         signal p_mem_flages : in std_logic_vector(6 downto 0);
         signal p_io_flages : in std_logic_vector(1 downto 0);
         signal p_branch_exec : in std_logic_vector(3 downto 0);
@@ -232,6 +233,7 @@ begin
         MEM_flages_out => MEM_flages,
         IO_flages_out => IO_flages,
         Branch_Exec_out => Branch_Exec,
+        CSwap_out => open,
         CCR_enable_out => CCR_enable,
         Imm_hazard_out => Imm_hazard,
         FU_enable_out => FU_enable,

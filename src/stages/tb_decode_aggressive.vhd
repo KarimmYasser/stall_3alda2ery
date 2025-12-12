@@ -19,8 +19,10 @@ architecture testbench of tb_decode_aggressive is
             PC : in std_logic_vector(31 downto 0);
             mem_br: in std_logic;
             exe_br: in std_logic;
-            mem_will_be_used_feedback : in std_logic;
-            imm_in_use_feedback : in std_logic;
+            WB_flages_in : in std_logic_vector(2 downto 0);
+            EXE_flages_in : in std_logic_vector(5 downto 0);
+            MEM_flages_in : in std_logic_vector(6 downto 0);
+            IO_flages_in : in std_logic_vector(1 downto 0);
             FD_enable : out std_logic;
             Stall :out std_logic;
             DE_enable :out  std_logic;
@@ -29,11 +31,13 @@ architecture testbench of tb_decode_aggressive is
             Branch_Decode: out std_logic;
             Micro_inst_out: out std_logic_vector(4 downto 0);
             WB_flages_out: out std_logic_vector(2 downto 0);
-            EXE_flages_out: out std_logic_vector(4 downto 0);
+            EXE_flages_out: out std_logic_vector(5 downto 0);
             MEM_flages_out: out std_logic_vector(6 downto 0);
             IO_flages_out: out std_logic_vector(1 downto 0);
             Branch_Exec_out: out std_logic_vector(3 downto 0);
+            CSwap_out: out std_logic; -- Added
             CCR_enable_out: out std_logic;
+            Imm_hazard_out: out std_logic;
             FU_enable_out: out std_logic;
             Rrs1_out: out std_logic_vector(31 downto 0);
             Rrs2_out: out std_logic_vector(31 downto 0);
@@ -129,20 +133,20 @@ architecture testbench of tb_decode_aggressive is
         write(l, string'(" [") & test_name & string'("]"));
         writeline(output, l);
         write(l, string'("  Instruction: "));
-        hwrite(l, p_instruction);
+        hwrite(l, instruction);
         write(l, string'(" | Opcode: "));
         write(l, instruction(31 downto 27));
         write(l, string'(" | Micro: "));
         write(l, Micro_inst);
         writeline(output, l);
         write(l, string'("  Pipeline: FD="));
-        write(l, p_fd_enable);
+        write(l, FD_enable);
         write(l, string'(" DE="));
-        write(l, p_de_enable);
+        write(l, DE_enable);
         write(l, string'(" EM="));
-        write(l, p_em_enable);
+        write(l, EM_enable);
         write(l, string'(" MW="));
-        write(l, p_mw_enable);
+        write(l, MW_enable);
         write(l, string'(" STALL="));
         write(l, Stall);
         write(l, string'(" INT="));
@@ -203,12 +207,12 @@ begin
         MW_enable => MW_enable,
         Branch_Decode => Branch_Decode,
         Micro_inst_out => Micro_inst,
-
         WB_flages_out => WB_flages,
         EXE_flages_out => EXE_flages,
         MEM_flages_out => MEM_flages,
         IO_flages_out => IO_flages,
         Branch_Exec_out => Branch_Exec,
+        CSwap_out => open, -- Connected to open for now as it wasn't tracked in this TB
         CCR_enable_out => CCR_enable,
         Imm_hazard_out => Imm_hazard,
         FU_enable_out => FU_enable,

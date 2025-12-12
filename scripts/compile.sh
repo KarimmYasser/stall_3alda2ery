@@ -23,8 +23,8 @@ NC=$'\033[0m' # No Color
 
 # Default options
 SYNOPSYS=""
-CLEAN=false
-RECURSIVE=false
+CLEAN=true
+RECURSIVE=true
 STD="--std=08"
 TARGET_DIR=""
 
@@ -108,8 +108,11 @@ VHD_FILES="$PKG_FILES $OTHER_FILES"
 VHD_FILES=$(echo "$VHD_FILES" | tr ' ' '\n' | grep -v '^$')
 
 if [ -z "$VHD_FILES" ]; then
-    printf "%sNo .vhd files found%s\n" "$YELLOW" "$NC"
-    exit 0
+    printf "%sNo .vhd files found in %s%s\n" "$YELLOW" "$TARGET_DIR" "$NC"
+    if [ "$RECURSIVE" = false ]; then
+        printf "%sHint: Use -r or --recursive to search in subdirectories.%s\n" "$YELLOW" "$NC"
+    fi
+     exit 0
 fi
 
 # Count files
@@ -136,7 +139,7 @@ for file in $VHD_FILES; do
     
     printf "Compiling %s... " "$file"
     
-    if ghdl -a $STD $SYNOPSYS "$file" 2>&1; then
+    if ghdl -a $STD -fsynopsys $SYNOPSYS "$file" 2>&1; then
         printf "%sOK%s\n" "$GREEN" "$NC"
         SUCCESS=$((SUCCESS + 1))
     else

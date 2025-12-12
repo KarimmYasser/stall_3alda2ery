@@ -18,6 +18,7 @@ entity id_ex_reg_with_feedback is
         MEM_flages_in : in std_logic_vector(6 downto 0);
         IO_flages_in : in std_logic_vector(1 downto 0);
         Branch_Exec_in : in std_logic_vector(3 downto 0);
+        CSwap_in : in std_logic; -- Added
 
         -- Control signals to Execute
         WB_flages_out : out std_logic_vector(2 downto 0);
@@ -25,6 +26,7 @@ entity id_ex_reg_with_feedback is
         MEM_flages_out : out std_logic_vector(6 downto 0);
         IO_flages_out : out std_logic_vector(1 downto 0);
         Branch_Exec_out : out std_logic_vector(3 downto 0);
+        CSwap_out : out std_logic; -- Added
         FU_enable_out : out std_logic;
 
         -- Data signals from Decode
@@ -64,8 +66,8 @@ architecture Behavioral of id_ex_reg_with_feedback is
     end component;
 
     -- Concatenated input/output signals for vector registers
-    signal control_flags_in : std_logic_vector(21 downto 0); -- 3+6+7+2+4
-    signal control_flags_out : std_logic_vector(21 downto 0);
+    signal control_flags_in : std_logic_vector(22 downto 0); -- 3+6+7+2+4+1 = 23
+    signal control_flags_out : std_logic_vector(22 downto 0);
     signal addresses_in : std_logic_vector(10 downto 0); -- Changed from 10 DOWNTO 0 (was correct, comment was wrong: 3+2+3+3=11)
     signal addresses_out : std_logic_vector(10 downto 0);
     signal ForwardEnable_signal_in : std_logic_vector(0 downto 0);
@@ -73,16 +75,17 @@ architecture Behavioral of id_ex_reg_with_feedback is
 
 begin
     -- Pack inputs
-    control_flags_in <= WB_flages_in & EXE_flages_in & MEM_flages_in & IO_flages_in & Branch_Exec_in;
+    control_flags_in <= WB_flages_in & EXE_flages_in & MEM_flages_in & IO_flages_in & Branch_Exec_in & CSwap_in;
     addresses_in <= rd_addr_in & index_in & rs1_addr_in & rs2_addr_in;
     ForwardEnable_signal_in(0) <= FU_enable_in;
 
     -- Unpack outputs
-    WB_flages_out <= control_flags_out(21 downto 19);
-    EXE_flages_out <= control_flags_out(18 downto 13);
-    MEM_flages_out <= control_flags_out(12 downto 6);
-    IO_flages_out <= control_flags_out(5 downto 4);
-    Branch_Exec_out <= control_flags_out(3 downto 0);
+    WB_flages_out <= control_flags_out(22 downto 20);
+    EXE_flages_out <= control_flags_out(19 downto 14);
+    MEM_flages_out <= control_flags_out(13 downto 7);
+    IO_flages_out <= control_flags_out(6 downto 5);
+    Branch_Exec_out <= control_flags_out(4 downto 1);
+    CSwap_out <= control_flags_out(0);
     FU_enable_out <= ForwardEnable_signal_out(0);
 
     rd_addr_out <= addresses_out(10 downto 8);
@@ -101,9 +104,9 @@ begin
         data_out => ForwardEnable_signal_out
     );
 
-    -- Control flags register (22 bits)
+    -- Control flags register (23 bits)
     REG_CONTROL_FLAGS : general_register
-    generic map(REGISTER_SIZE => 22, RESET_VALUE => 0)
+    generic map(REGISTER_SIZE => 23, RESET_VALUE => 0)
     port map(
         clk => clk,
         reset => reset,

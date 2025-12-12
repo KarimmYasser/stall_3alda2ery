@@ -95,7 +95,8 @@ architecture structural of top_level_processor is
             pc_out: out std_logic_vector(31 downto 0);
             rs1_addr_out: out std_logic_vector(2 downto 0);
             rs2_addr_out: out std_logic_vector(2 downto 0);
-            rd_addr_out: out std_logic_vector(2 downto 0)
+            rd_addr_out: out std_logic_vector(2 downto 0);
+            CSwap_out: out std_logic
         );
     end component Decode;
     
@@ -111,6 +112,7 @@ architecture structural of top_level_processor is
         exe_signals : in std_logic_vector(5 downto 0);
         output_signal : in std_logic;
         input_signal : in std_logic;
+        swap_signal : in std_logic;
         branch_opcode : in std_logic_vector(3 downto 0);
         rs1_data : in std_logic_vector(31 downto 0);
         rs2_data : in std_logic_vector(31 downto 0);
@@ -121,7 +123,7 @@ architecture structural of top_level_processor is
         rd_addr : in std_logic_vector(2 downto 0);
         immediate : in std_logic_vector(31 downto 0);
         in_port : in std_logic_vector(31 downto 0);
-        set_carry : in std_logic;
+        ccr_enable : in std_logic;
         ccr_load : in std_logic;
         ccr_from_stack : in std_logic_vector(2 downto 0);
         rdst_mem : in std_logic_vector(2 downto 0);
@@ -155,11 +157,13 @@ architecture structural of top_level_processor is
         MEM_flages_in   : IN  STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_in    : IN  STD_LOGIC_VECTOR(1 DOWNTO 0);
         Branch_Exec_in  : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
+        CSwap_in        : IN  STD_LOGIC;
         WB_flages_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
         EXE_flages_out  : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
         MEM_flages_out  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
         IO_flages_out   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
         Branch_Exec_out : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        CSwap_out       : OUT STD_LOGIC;
         FU_enable_out   : OUT STD_LOGIC;
         Rrs1_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
         Rrs2_in         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -242,6 +246,7 @@ architecture structural of top_level_processor is
     signal decode_rs1_addr : std_logic_vector(2 downto 0);
     signal decode_rs2_addr : std_logic_vector(2 downto 0);
     signal decode_rd_addr : std_logic_vector(2 downto 0);
+    signal decode_CSwap : std_logic;
     
     -- Signals from ID/EX register to Execute stage
     signal exe_WB_flages : std_logic_vector(2 downto 0);
@@ -298,7 +303,7 @@ architecture structural of top_level_processor is
     signal mem_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
     signal wb_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
     signal swap_forwarded_data_signal : std_logic_vector(31 downto 0) := (others => '0');
-    signal exe_signals_extended : std_logic_vector(5 downto 0);
+    signal exe_swap_signal : std_logic;
     
 begin
     
@@ -368,7 +373,8 @@ begin
         pc_out => decode_pc_out,
         rs1_addr_out => decode_rs1_addr,
         rs2_addr_out => decode_rs2_addr,
-        rd_addr_out => decode_rd_addr
+        rd_addr_out => decode_rd_addr,
+        CSwap_out => decode_CSwap
     );
     
     -- ========== ID/EX PIPELINE REGISTER ==========
@@ -382,11 +388,13 @@ begin
         MEM_flages_in => decode_MEM_flages,
         IO_flages_in => decode_IO_flages,
         Branch_Exec_in => decode_Branch_Exec,
+        CSwap_in => decode_CSwap,
         WB_flages_out => exe_WB_flages,
         EXE_flages_out => exe_EXE_flages,
         MEM_flages_out => exe_MEM_flages,
         IO_flages_out => exe_IO_flages,
         Branch_Exec_out => exe_Branch_Exec,
+        CSwap_out => exe_swap_signal,
         FU_enable_out => exe_FU_enable,
         Rrs1_in => decode_Rrs1,
         Rrs2_in => decode_Rrs2,
@@ -416,7 +424,7 @@ begin
         exe_signals => exe_EXE_flages,
         output_signal => exe_IO_flages(1), -- also ensure this order of io bits
         input_signal => exe_IO_flages(0),
-        swap_signal => exe_signals_extended, -- mazen, add the swap signal from the id-ex reg here
+        swap_signal => exe_swap_signal, -- Connected corrected signal
         branch_opcode => exe_Branch_Exec,
         rs1_data => exe_Rrs1,
         rs2_data => exe_Rrs2,

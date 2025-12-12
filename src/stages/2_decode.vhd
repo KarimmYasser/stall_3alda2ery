@@ -32,6 +32,7 @@ entity Decode is
         MEM_flages_out: out std_logic_vector(6 downto 0);
         IO_flages_out: out std_logic_vector(1 downto 0);
         Branch_Exec_out: out std_logic_vector(3 downto 0);
+        CSwap_out: out std_logic; -- Added
         CCR_enable_out: out std_logic;
         Imm_hazard_out: out std_logic;
         FU_enable_out: out std_logic;
@@ -200,6 +201,7 @@ begin
     MEM_flages_out <= mem_flages_flushed;
     IO_flages_out <= io_flages_flushed;
     Branch_Exec_out <= branch_exec_flushed;
+    CSwap_out <= CSwap when (ID_flush_main='0' and mem_br='0' and exe_br='0') else '0'; -- Flush CSwap
     CCR_enable_out <= CCR_enable_signal;
     Imm_hazard_out <= Imm_hazard_signal;
     FU_enable_out <= ForwardEnable_signal;

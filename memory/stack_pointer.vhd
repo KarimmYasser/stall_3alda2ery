@@ -23,12 +23,8 @@ ENTITY stack_pointer IS
         reset : IN STD_LOGIC;                   -- Asynchronous active-high reset
         
         -- Stack operation control signals
-        pop   : IN STD_LOGIC;                   -- POP operation (increment SP)
-        ret   : IN STD_LOGIC;                   -- RET operation (increment SP)
-        rti   : IN STD_LOGIC;                   -- RTI operation (increment SP)
-        push  : IN STD_LOGIC;                   -- PUSH operation (decrement SP)
-        call  : IN STD_LOGIC;                   -- CALL operation (decrement SP)
-        int   : IN STD_LOGIC;                   -- INT operation (decrement SP)
+        stack_read  : IN STD_LOGIC;             -- POP/RET/RTI operation (increment SP)
+        stack_write : IN STD_LOGIC;             -- PUSH/CALL/INT operation (decrement SP)
         
         -- Stack pointer output
         sp_out : OUT STD_LOGIC_VECTOR(ADDR_WIDTH - 1 DOWNTO 0)
@@ -58,19 +54,19 @@ BEGIN
     END PROCESS;
 
     -- Combinational logic: Calculate next SP value
-    PROCESS (sp, pop, ret, rti, push, call, int)
+    PROCESS (sp, stack_read, stack_write)
     BEGIN
         -- Default: No change to SP
         sp_next <= sp;
 
         -- Decrement SP (stack grows downward)
-        -- Priority: PUSH, CALL, INT
-        IF (push = '1' OR call = '1' OR int = '1') THEN
+        -- Priority: WRITE (PUSH, CALL, INT)
+        IF (stack_write = '1') THEN
             sp_next <= sp - 1;
         
         -- Increment SP (stack shrinks upward)
-        -- Priority: POP, RET, RTI
-        ELSIF (pop = '1' OR ret = '1' OR rti = '1') THEN
+        -- READ (POP, RET, RTI)
+        ELSIF (stack_read = '1') THEN
             sp_next <= sp + 1;
         END IF;
     END PROCESS;
