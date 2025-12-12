@@ -8,7 +8,7 @@ formats = {
     "E": ["opcode", "rdst", "immediate"],               # LDM
     "F": ["opcode", "rdst", "rsrc", "immediate"],       # IADD
     "G": ["opcode", "rdst", "offset", "rsrc"],          # LDD  -> LDD Rdst, offset(Rsrc)
-    "H": ["opcode", "rsrc1", "offset", "rsrc2"],        # STD  -> STD Rsrc1, offset(Rsrc2)
+    "H": ["opcode", "rsrc2", "offset", "rsrc1"],        # STD  -> STD Rsrc2, offset(Rsrc1)
     "I": ["opcode", "address"],                         # JZ, JN, JC, JMP, CALL
     "J": ["opcode", "index"],                           # INT
     "M": ["opcode","rsrc2"],                            # OUT , PUSH
@@ -202,9 +202,9 @@ def encode_instruction(instruction, operands, symbol_table=None):
         # Offset goes in word 2
     
     elif fmt == "H":
-        # STD Rsrc1, offset(Rsrc2) -> operands = [Rsrc1, offset, Rsrc2]
-        rdst = register_map[operands[0]]  # Rsrc1 (source data)
-        rs1 = register_map[operands[2]]   # Rsrc2 (base address)
+        # STD Rsrc1, offset(Rsrc2) -> operands = [Rsrc2, offset, Rsrc1]
+        rdst = register_map[operands[2]]  # Rsrc1 (source data)
+        rs1 = register_map[operands[0]]   # Rsrc2 (base address)
         # Offset goes in word 2
     
     elif fmt == "I":
