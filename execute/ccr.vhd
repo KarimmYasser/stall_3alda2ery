@@ -27,19 +27,18 @@ begin
     if rst = '1' then
       flags <= (others => '0');
     elsif rising_edge(clk) then
+      if (ccr_load = '1') then
+        flags <= ccr_from_stack;
+      end if;
       if enable = '1' then
-        if (ccr_load = '1') then
-          flags <= ccr_from_stack;
-        else
-          if (alu_flags_enable(0) = '1') then
-            flags(0) <= alu_flags(0);
-          end if;
-          if (alu_flags_enable(1) = '1') then
-            flags(1) <= alu_flags(1);
-          end if;
-          if (alu_flags_enable(2) = '1') then
-            flags(2) <= alu_flags(2);
-          end if;
+        if (alu_flags_enable(0) = '1') then
+          flags(0) <= alu_flags(0);
+        end if;
+        if (alu_flags_enable(1) = '1') then
+          flags(1) <= alu_flags(1);
+        end if;
+        if (alu_flags_enable(2) = '1') then
+          flags(2) <= alu_flags(2);
         end if;
       end if;
     end if;

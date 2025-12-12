@@ -79,13 +79,17 @@ begin
         end if;
         
       when "110" => -- SETC
-        temp_result := '0' & alu_operand_1;
+        temp_result := '1' & alu_operand_1;  -- Set carry bit to '1'
         result <= temp_result(31 downto 0);
         if(alu_enable = '1') then
-          flags_enable_out <= "100"; -- Enable C only
+          flags_enable_out <= "001"; -- Enable C only [bit 0 = Carry]
         else
           flags_enable_out <= "000"; -- No flags updated
         end if;
+      
+      when "111" => -- PASS 1
+        result <= alu_operand_1; -- Pass through
+        flags_enable_out <= "000"; -- No flags updated
         
       when others => -- Reserved
         result <= (others => '0');
