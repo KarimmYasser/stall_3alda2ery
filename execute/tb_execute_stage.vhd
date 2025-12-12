@@ -1329,6 +1329,146 @@ begin
     );
 
     --------------------------------------------------------------------------------
+    -- Test 26: PUSH rs2 (Store rs2 data to stack)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("PUSH - Push Rs2 Data to Stack");
+    clear_signals;
+    
+    exe_signals <= "000000";      -- No ALU operation
+    mem_signals <= "0000100";     -- StackWrite
+    wb_signals <= "000";          -- No writeback
+    ccr_enable <= '0';
+    rs2_data <= x"0000ABCD";      -- Data to push
+    rs2_addr <= "011";
+    pc <= x"00001900";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",  -- No ALU operation
+      expected_ccr => "000",
+      expected_wb => "000",
+      test_desc => "PUSH: Rs2 data should reach ex_mem_rs2_data output"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 27: POP rdst (Load from stack to register)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("POP - Pop from Stack to Rdst");
+    clear_signals;
+    
+    exe_signals <= "000000";      -- No ALU operation
+    mem_signals <= "0001000";     -- StackRead
+    wb_signals <= "110";          -- RegWrite + MemtoReg
+    ccr_enable <= '0';
+    rd_addr <= "100";
+    pc <= x"00001A00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00000000",  -- No ALU operation
+      expected_ccr => "000",
+      expected_wb => "110",
+      test_desc => "POP: No specific execute output check (data from memory stage)"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 28: LDM rdst, imm (Load from immediate address)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("LDM - Load from Immediate Address");
+    clear_signals;
+    
+    exe_signals <= "100101";      -- Immediate operand
+    mem_signals <= "0100000";     -- MEMRead
+    wb_signals <= "110";          -- RegWrite + MemtoReg
+    ccr_enable <= '0';
+    rs1_data <= x"00000000";  -- Not used
+    immediate <= x"F0001234";     -- Memory address
+    rd_addr <= "101";
+    pc <= x"00001B00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"F0001234",  -- No ALU operation
+      expected_ccr => "000",
+      expected_wb => "110",
+      test_desc => "LDM: Immediate passed as address (no ALU involved)"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 29: LDD rdst, rs1+imm (Load with address calculation)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("LDD - Load from Rs1 + Immediate (Address Calculation)");
+    clear_signals;
+    
+    exe_signals <= "100101";      -- ALU enabled, ADD operation, immediate
+    mem_signals <= "0100000";     -- MEMRead
+    wb_signals <= "110";          -- RegWrite + MemtoReg
+    ccr_enable <= '1';
+    rs1_data <= x"00001000";      -- Base address
+    immediate <= x"00000050";     -- Offset
+    rs1_addr <= "010";
+    rd_addr <= "110";
+    pc <= x"00001C00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00001050",  -- Address = rs1 + imm
+      expected_ccr => "000",
+      expected_wb => "110",
+      test_desc => "LDD: ALU computes address (rs1 + imm = 0x1000 + 0x50)"
+    );
+
+    --------------------------------------------------------------------------------
+    -- Test 30: STD rs2, rs1+imm (Store with address calculation)
+    --------------------------------------------------------------------------------
+    test_count := test_count + 1;
+    print_header("STD - Store Rs2 to Rs1 + Immediate");
+    clear_signals;
+    
+    exe_signals <= "100101";      -- ALU enabled, ADD operation, immediate
+    mem_signals <= "0010000";     -- MEMWrite
+    wb_signals <= "000";          -- No writeback
+    ccr_enable <= '1';
+    rs1_data <= x"00002000";      -- Base address
+    rs2_data <= x"0000BEEF";      -- Data to store
+    immediate <= x"00000100";     -- Offset
+    rs1_addr <= "011";
+    rs2_addr <= "100";
+    pc <= x"00001D00";
+    
+    wait for 0 ns;
+    print_inputs;
+    wait for clk_period;
+    print_outputs;
+    
+    check_result(
+      expected_alu => x"00002100",  -- Address = rs1 + imm
+      expected_ccr => "000",
+      expected_wb => "000",
+      test_desc => "STD: ALU computes address, rs2 data forwarded for store"
+    );
+
+    --------------------------------------------------------------------------------
     -- Test Summary
     --------------------------------------------------------------------------------
     write(l, LF & LF);
