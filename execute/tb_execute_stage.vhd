@@ -1491,7 +1491,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "001";          -- PC-select
-    branch_opcode <= "0011";      -- JZ with branch enable
     ccr_enable <= '0';
     immediate <= x"00000008";     -- Jump offset
     branch_opcode <= "0011";      -- JZ with branch enable (00=JZ, 11=enable+condition)
@@ -1532,7 +1531,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "000";          -- PC-select off
-    branch_opcode <= "0011";      -- JZ with branch enable
     ccr_enable <= '0';
     immediate <= x"00000008";     -- Jump offset
     branch_opcode <= "0011";      -- JZ with branch enable
@@ -1573,7 +1571,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "001";          -- PC-select
-    branch_opcode <= "0111";      -- JN with branch enable
     ccr_enable <= '0';
     immediate <= x"0000000C";     -- Jump offset
     branch_opcode <= "0111";      -- JN with branch enable (01=JN, 11=enable+condition)
@@ -1614,7 +1611,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "000";
-    branch_opcode <= "0111";      -- JN with branch enable
     ccr_enable <= '0';
     immediate <= x"0000000C";     -- Jump offset
     branch_opcode <= "0111";      -- JN with branch enable
@@ -1655,7 +1651,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "001";          -- PC-select
-    branch_opcode <= "0111";      -- JC with branch enable
     ccr_enable <= '0';
     immediate <= x"00000010";     -- Jump offset
     branch_opcode <= "1011";      -- JC with branch enable (10=JC, 11=enable+condition)
@@ -1696,7 +1691,6 @@ begin
     exe_signals <= "000010";      -- Immediate operand
     mem_signals <= "0000000";
     wb_signals <= "000";
-    branch_opcode <= "0111";      -- JC with branch enable
     ccr_enable <= '0';
     immediate <= x"00000010";     -- Jump offset
     branch_opcode <= "1011";      -- JC with branch enable
