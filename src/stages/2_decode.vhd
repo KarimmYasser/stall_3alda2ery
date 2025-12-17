@@ -10,13 +10,7 @@ entity Decode is
         PC : in std_logic_vector(31 downto 0);
         mem_br: in std_logic;
         exe_br: in std_logic;
-        
-        -- Previous instruction flags from ID/EX register
-        WB_flages_in : in std_logic_vector(2 downto 0);
-        EXE_flages_in : in std_logic_vector(5 downto 0);
-        MEM_flages_in : in std_logic_vector(6 downto 0);
-        IO_flages_in : in std_logic_vector(1 downto 0);
-        
+
         -- Pipeline control outputs
         FD_enable : out std_logic;
         Stall :out std_logic;
@@ -44,7 +38,9 @@ entity Decode is
         pc_out: out std_logic_vector(31 downto 0);
         rs1_addr_out: out std_logic_vector(2 downto 0);
         rs2_addr_out: out std_logic_vector(2 downto 0);
-        rd_addr_out: out std_logic_vector(2 downto 0)
+        rd_addr_out: out std_logic_vector(2 downto 0);
+        WB_value : in std_logic_vector(31 downto 0);
+        WB_enable : in std_logic
     );
 end entity Decode;
 
@@ -169,8 +165,8 @@ begin
     rAddr1 <= instruction(5 downto 3) when CSwap='0' else instruction(2 downto 0);
     rAddr2 <= instruction(2 downto 0) when CSwap='0' else instruction(5 downto 3);
     wAddr <= instruction(8 downto 6);
-    dataIn <= (others => '0');
-    we <= '0';
+    dataIn <= WB_value;
+    we <= WB_enable;  
 
     -- Swap logic - register data outputs
     Rrs1_out <= dataOut1;

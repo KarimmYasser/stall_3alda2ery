@@ -59,6 +59,10 @@ vcom -93 -work work ../execute/execute_stage.vhd
 echo "Compiling EX/MEM pipeline register..."
 vcom -93 -work work pipeline/ex_mem_reg.vhd
 
+# Compile memory interface package
+echo "Compiling memory interface package..."
+vcom -93 -work work common/memory_interface_pkg.vhd
+
 # Compile top-level processor
 echo "Compiling top-level processor..."
 vcom -93 -work work top_level_processor.vhd
@@ -79,6 +83,8 @@ add wave -divider "Top-Level Signals"
 add wave -color "Yellow" {sim:/tb_top_level_aggressive/clk}
 add wave -color "Orange" {sim:/tb_top_level_aggressive/reset}
 add wave -color "Red" {sim:/tb_top_level_aggressive/interrupt}
+
+
 
 # Add waves - Fetch Stage
 add wave -divider "Fetch Stage"

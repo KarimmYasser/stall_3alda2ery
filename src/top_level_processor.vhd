@@ -72,14 +72,7 @@ architecture structural of top_level_processor is
             opcode : in std_logic_vector(4 downto 0);
             PC : in std_logic_vector(31 downto 0);
             mem_br: in std_logic;
-            exe_br: in std_logic;
-            
-            -- Previous instruction flags from ID/EX register
-            WB_flages_in : in std_logic_vector(2 downto 0);
-            EXE_flages_in : in std_logic_vector(5 downto 0);
-            MEM_flages_in : in std_logic_vector(6 downto 0);
-            IO_flages_in : in std_logic_vector(1 downto 0);
-            
+            exe_br: in std_logic;    
             FD_enable : out std_logic;
             Stall :out std_logic;
             DE_enable :out  std_logic;
@@ -102,7 +95,9 @@ architecture structural of top_level_processor is
             rs1_addr_out: out std_logic_vector(2 downto 0);
             rs2_addr_out: out std_logic_vector(2 downto 0);
             rd_addr_out: out std_logic_vector(2 downto 0);
-            CSwap_out: out std_logic
+            CSwap_out: out std_logic;
+            WB_value : in std_logic_vector(31 downto 0);
+            WB_enable : in std_logic
         );
     end component Decode;
     
@@ -338,7 +333,8 @@ architecture structural of top_level_processor is
     signal decode_rs2_addr : std_logic_vector(2 downto 0);
     signal decode_rd_addr : std_logic_vector(2 downto 0);
     signal decode_CSwap : std_logic;
-    
+    signal EM_enable_signal : std_logic;
+    signal MW_enable_signal : std_logic;
     -- Signals from ID/EX register to Execute stage
     signal exe_WB_flages : std_logic_vector(2 downto 0);
     signal exe_EXE_flages : std_logic_vector(5 downto 0);
@@ -470,15 +466,11 @@ begin
         PC => ifid_pc_out,
         mem_br => mem_br_signal,
         exe_br => exe_br_signal,
-        WB_flages_in => exe_WB_flages,
-        EXE_flages_in => exe_EXE_flages,
-        MEM_flages_in => exe_MEM_flages,
-        IO_flages_in => exe_IO_flages,
         FD_enable => FD_enable_signal,
         Stall => stall_signal,
         DE_enable => decode_DE_enable,
-        EM_enable => open,
-        MW_enable => open,
+        EM_enable => EM_enable_signal,
+        MW_enable => MW_enable_signal,
         Branch_Decode => branch_decode_signal,
         Micro_inst_out => micro_inst_signal,
         WB_flages_out => decode_WB_flages,
@@ -496,7 +488,9 @@ begin
         rs1_addr_out => decode_rs1_addr,
         rs2_addr_out => decode_rs2_addr,
         rd_addr_out => decode_rd_addr,
-        CSwap_out => decode_CSwap
+        CSwap_out => decode_CSwap,
+        WB_value => wb_data_out,
+        WB_enable => exe_mem_wb_signals_out(2)
     );
     
     -- ========== ID/EX PIPELINE REGISTER ==========
@@ -579,14 +573,13 @@ begin
         branch_enable => exe_branch_enable
     );
     
-    -- Connect branch enable to exe_br_signal for feedback to fetch
-    exe_br_signal <= exe_branch_enable;
-    
+    -- Connect branch enable to exe_br_signal for feedback to fetch  
+      exe_br_signal <= exe_branch_enable;
     -- ========== EX/MEM PIPELINE REGISTER ==========
     EX_MEM_REGISTER: ex_mem_reg port map(
         clk => clk,
         reset => reset,
-        write_enable => '1',  -- TODO: Connect to EM_enable from decode
+        write_enable => EM_enable_signal,  -- TODO: Connect to EM_enable from decode
         wb_signals_in => exe_mem_wb_signals_out,
         mem_signals_in => exe_mem_mem_signals_out,
         output_signal_in => exe_mem_output_signal_out,
@@ -606,6 +599,8 @@ begin
         pc_out => mem_pc,
         rd_addr_out => mem_rd_addr
     );
+    
+    --wb enable signal to be connected to MEM/WB reg
     
     -- TODO: Add other pipeline stages (Memory, Writeback)
     
@@ -685,7 +680,7 @@ begin
     MEM_WB_REGISTER: mem_wb_reg port map(
         clk => clk,
         reset => reset,
-        write_enable => '1', -- Always enable for now
+        write_enable => MW_enable_signal, -- Always enable for now
         wb_signals_in => mem_stage_wb_signals,
         read_data_in => mem_stage_read_data,
         alu_result_in => mem_stage_alu_result,
@@ -699,6 +694,12 @@ begin
         rd_addr_out => wb_stage_rd_addr
     );
     
+    -- Connect testbench outputs for Execute stage
+    tb_exe_alu_result <= exe_mem_alu_result_out;
+    tb_exe_ccr <= exe_mem_ccr_out;
+    tb_exe_branch_taken <= exe_mem_branch_taken_out;
+    tb_exe_rd_addr <= exe_mem_rd_addr_out;
+    
     -- Connect testbench outputs for Memory stage
     tb_mem_wb_signals <= wb_stage_wb_signals;
     tb_mem_stage_read_data_out <= wb_stage_read_data;
@@ -710,7 +711,7 @@ begin
     WRITEBACK_STAGE_INST: writeback port map(
         mem_read_data => wb_stage_read_data,
         alu_result => wb_stage_alu_result,
-        wb_select => wb_stage_wb_signals(2), 
+        wb_select => wb_stage_wb_signals(1),  --confirmed
         -- TODO: MAZEN - Confirm wb_select bit position
         wb_data => wb_data_out
     );
