@@ -16,8 +16,8 @@ Entity Control_Unit is
         Branch_Decode: out std_logic;
         ID_flush :out std_logic;
         WB_flages: out std_logic_vector(2 downto 0);  -- (2)RegWrite, (1)MemtoReg, (0)PC-select
-        EXE_flages: out std_logic_vector(5 downto 0); -- (5) alu enable(4:2)ALU_OP, (1)ALUSrc, (0)Index
-        MEM_flages: out std_logic_vector(6 downto 0); -- (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore/CCRLoad, (0)CCRLoad
+        EXE_flages: out std_logic_vector(5 downto 0); -- (5) alu enable(4:2)ALU_OP, (0)ALUSrc, (1)Index
+        MEM_flages: out std_logic_vector(6 downto 0); -- (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore, (0)CCRLoad
         IO_flages: out std_logic_vector(1 downto 0);  -- (1)output, (0)input
         CSwap : out std_logic;
         Branch_Exec: out std_logic_vector(3 downto 0); -- (3)sel1, (2)sel0, (1)imm, (0)branch
@@ -117,6 +117,7 @@ architecture behavior of Control_Unit is
     signal main_write_in_src2: std_logic := '0';
     -----------------------------------------------------------------
     signal Imm_hazard_signal : std_logic := '0';
+    signal clk_div2 : std_logic := '0';
     ------------------------------------------------------------------
     -- Final outputs are multiplexed between micro_ and main_
     ------------------------------------------------------------------
@@ -128,17 +129,24 @@ begin
     Imm_in_use_vec_in(0) <= Imm_predict_internal;
     Imm_in_use <= Imm_in_use_vec_out(0);
     
+    process(clk, reset)
+    begin
+        if reset = '1' then
+            clk_div2 <= '0';
+        elsif rising_edge(clk) then
+            clk_div2 <= not clk_div2;
+        end if;
+    end process;
     -- Register for mem_will_be_used feedback
     REG_MEM_WILL_BE_USED: general_register
         GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
         PORT MAP (
-            clk => clk,
+            clk => clk_div2,
             reset => reset,
             write_enable => '1',
             data_in => mem_will_be_used_vec_in,
             data_out => mem_will_be_used_vec_out
         );
-    
     -- Register for Imm_in_use feedback
     REG_IMM_IN_USE: general_register
         GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
@@ -235,8 +243,8 @@ begin
                         micro_Stall <= '0';
                         micro_Micro_inst <= "00000";
                         micro_MEM_flages(5) <= '1'; --MEMRead
-                        micro_EXE_flages(1) <= '0'; --ALUSrc
-                        micro_EXE_flages(0) <= '1'; --Index
+                        micro_EXE_flages(0) <= '0'; --ALUSrc
+                        micro_EXE_flages(1) <= '1'; --Index
                         micro_EXE_flages(4 downto 2) <= "010";
                         micro_branch_exec(0) <= '1'; --branch
                         micro_next <= M_IDLE;
@@ -358,7 +366,7 @@ Main_comb :  Process(op_code,data_ready,reset)
                             main_WB_flages(2) <= '1'; --RegWrite
                         when "0101" => --LDM--
                             main_EXE_flages(5 downto 2) <= "1001"; --Indexing ########## waiting for ALU Op codes add
-                            main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(0) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
                             start_immediate_req <= '1';
                         when "0110" => --mov--
@@ -373,7 +381,7 @@ Main_comb :  Process(op_code,data_ready,reset)
                             start_swap_req <= '1';
                         when "1000" => --IADD--
                             main_EXE_flages(5 downto 2) <= "1001";
-                            main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(0) <= '1'; --ALUSrc
                             main_WB_flages(2) <= '1'; --RegWrite
                             start_immediate_req <= '1';
                         when "1001" => --add--
@@ -418,29 +426,26 @@ Main_comb :  Process(op_code,data_ready,reset)
                         when "0011" => --pop--
                             main_MEM_flages(3) <= '1'; --StackRead
                             main_WB_flages(2) <= '1'; --RegWrite
+                            main_WB_flages(1) <='1'; --MemtoReg
                         when "0100" => --LDD--
                             main_MEM_flages(5) <= '1'; --MEMRead
                             main_WB_flages(1) <= '1'; --MemtoReg
                             main_WB_flages(2) <= '1'; --RegWrite
-                            main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(0) <= '1'; --ALUSrc
                             main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             start_immediate_req <= '1';
                         when "0101" => --STD--
                             main_MEM_flages(4) <= '1'; --MEMWrite
-                            main_EXE_flages(1) <= '1'; --ALUSrc
+                            main_EXE_flages(0) <= '1'; --ALUSrc
                             main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
                             main_MEM_flages(6) <= '0'; --WDselect
                             start_immediate_req <= '1';
                         when "0110" => --call--
                             main_branch_Decode <= '1';
-                            main_ID_flush <= '1';
                             main_MEM_flages(2) <= '1'; --StackWrite
                             main_MEM_flages(6) <= '1'; --WDselect
                             main_WB_flages(0) <= '1'; --PC-select
-                            main_EXE_flages(1) <= '1'; --ALUSrc
-                            main_EXE_flages(5 downto 2) <= "1001"; -- add ALU operation
-                            main_branch_exec(1) <= '1'; --imm
-                            main_branch_exec(0) <= '1';
+                            main_EXE_flages(5 downto 2) <= "0000"; -- add ALU operation
                             start_immediate_req <= '1';
                         when "0111" => --ret--
                             main_MEM_flages(3) <= '1'; --StackRead
@@ -477,7 +482,7 @@ Main_comb :  Process(op_code,data_ready,reset)
     
     -- Predict if current instruction will use memory (internal for register input)
     mem_usage_predict_internal <= '1' when (micro_active = '1' and (micro_MEM_flages(2) = '1' or micro_MEM_flages(3) = '1' or micro_MEM_flages(4) = '1' or micro_MEM_flages(5) = '1'
-                                                        or micro_MEM_flages(1)='1'or micro_MEM_flages(0)='1' ) )or
+                                                        or micro_MEM_flages(1)='1'or micro_MEM_flages(0)='1' ) ) or
                                    (micro_active = '0' and (main_MEM_flages(2) = '1' or main_MEM_flages(3) = '1' or main_MEM_flages(4) = '1' or main_MEM_flages(5) = '1' or main_MEM_flages(1)='1'or main_MEM_flages(0)='1' ) )
                          else '0';
     

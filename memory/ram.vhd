@@ -7,7 +7,7 @@ USE std.textio.ALL;
 
 ENTITY ram IS
     GENERIC (
-        INIT_FILENAME : STRING := "memory_init.txt";
+        INIT_FILENAME : STRING := "test_output.mem";
         MEMORY_DEPTH  : INTEGER := 262144 -- 2^18 words
     );
     PORT (
@@ -27,6 +27,10 @@ ARCHITECTURE arch_ram OF ram IS
 
 BEGIN
 
+    data_out <= (OTHERS => '0') when (reset = '1') else
+                memory(to_integer(unsigned(addr))) when (mem_read = '1') else
+                (OTHERS => '0');
+
     ram_process : PROCESS (clk, reset) IS
         FILE memory_file : TEXT;
         VARIABLE fileLineContent : LINE;
@@ -42,16 +46,16 @@ BEGIN
                 FOR i IN memory'RANGE LOOP
                     IF NOT ENDFILE(memory_file) THEN
                         readline(memory_file, fileLineContent);
-                        hread(fileLineContent, temp_data);
+                        read(fileLineContent, temp_data);
                         memory(i) <= temp_data;
                     ELSE
                         EXIT;
                     END IF;
                 END LOOP;
                 file_close(memory_file);
+            ELSE
+                assert false report "RAM init file open failed: " & INIT_FILENAME severity error;
             END IF;
-            
-            data_out <= (OTHERS => '0'); -- Clear data_out on reset
             
         -- Normal operation on clock edge
         ELSIF rising_edge(clk) THEN
@@ -60,11 +64,6 @@ BEGIN
             -- Write operation
             IF mem_write = '1' THEN
                 memory(address_index) <= data_in;
-            END IF;
-            
-            -- Read operation
-            IF mem_read = '1' THEN
-                data_out <= memory(address_index);
             END IF;
         END IF;
     END PROCESS ram_process;

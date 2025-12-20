@@ -10,16 +10,30 @@ end entity tb_top_level_aggressive;
 architecture testbench of tb_top_level_aggressive is
     -- Component declaration
     component top_level_processor is
+        generic (
+            INIT_FILENAME : string := "../assembler/output/test_output.mem"
+        );
         port(
             clk : in std_logic;
             reset : in std_logic;
             interrupt : in std_logic;
+            inputport_data : in std_logic_vector(31 downto 0);
             tb_instruction_mem : in std_logic_vector(31 downto 0);
             tb_mem_read_data : in std_logic_vector(31 downto 0);
             tb_exe_alu_result : out std_logic_vector(31 downto 0);
             tb_exe_ccr : out std_logic_vector(2 downto 0);
             tb_exe_branch_taken : out std_logic;
-            tb_exe_rd_addr : out std_logic_vector(2 downto 0)
+            tb_exe_rd_addr : out std_logic_vector(2 downto 0);
+
+            dbg_pc : out std_logic_vector(31 downto 0);
+            dbg_fetched_instruction : out std_logic_vector(31 downto 0);
+            dbg_sp : out std_logic_vector(17 downto 0);
+            dbg_stall : out std_logic;
+            dbg_ram_addr : out std_logic_vector(17 downto 0);
+            dbg_ram_read_en : out std_logic;
+            dbg_ram_write_en : out std_logic;
+            dbg_ram_data_in : out std_logic_vector(31 downto 0);
+            dbg_ram_data_out : out std_logic_vector(31 downto 0)
         );
     end component top_level_processor;
 
@@ -27,6 +41,7 @@ architecture testbench of tb_top_level_aggressive is
     signal clk : std_logic := '0';
     signal reset : std_logic := '0';
     signal interrupt : std_logic := '0';
+    signal inputport_data : std_logic_vector(31 downto 0) := X"000000FF";
     signal instruction : std_logic_vector(31 downto 0) := (others => '0');
     signal mem_read_data : std_logic_vector(31 downto 0) := (others => '0');
     
@@ -35,6 +50,16 @@ architecture testbench of tb_top_level_aggressive is
     signal exe_ccr : std_logic_vector(2 downto 0);
     signal exe_branch_taken : std_logic;
     signal exe_rd_addr : std_logic_vector(2 downto 0);
+
+    signal dbg_pc : std_logic_vector(31 downto 0);
+    signal dbg_fetched_instruction : std_logic_vector(31 downto 0);
+    signal dbg_sp : std_logic_vector(17 downto 0);
+    signal dbg_stall : std_logic;
+    signal dbg_ram_addr : std_logic_vector(17 downto 0);
+    signal dbg_ram_read_en : std_logic;
+    signal dbg_ram_write_en : std_logic;
+    signal dbg_ram_data_in : std_logic_vector(31 downto 0);
+    signal dbg_ram_data_out : std_logic_vector(31 downto 0);
     
     -- Clock period
     constant clk_period : time := 10 ns;
@@ -117,12 +142,23 @@ begin
         clk => clk,
         reset => reset,
         interrupt => interrupt,
+        inputport_data => inputport_data,
         tb_instruction_mem => instruction,
         tb_mem_read_data => mem_read_data,
         tb_exe_alu_result => exe_alu_result,
         tb_exe_ccr => exe_ccr,
         tb_exe_branch_taken => exe_branch_taken,
-        tb_exe_rd_addr => exe_rd_addr
+        tb_exe_rd_addr => exe_rd_addr,
+
+        dbg_pc => dbg_pc,
+        dbg_fetched_instruction => dbg_fetched_instruction,
+        dbg_sp => dbg_sp,
+        dbg_stall => dbg_stall,
+        dbg_ram_addr => dbg_ram_addr,
+        dbg_ram_read_en => dbg_ram_read_en,
+        dbg_ram_write_en => dbg_ram_write_en,
+        dbg_ram_data_in => dbg_ram_data_in,
+        dbg_ram_data_out => dbg_ram_data_out
     );
 
     -- Clock generation

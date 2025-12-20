@@ -177,6 +177,8 @@ def encode_instruction(instruction, operands, symbol_table=None):
         # Two registers: MOV Rsrc, Rdst | SWAP Rsrc, Rdst
         rs1 = register_map[operands[0]]   # Rsrc
         rdst = register_map[operands[1]]  # Rdst
+        if instruction == "SWAP":
+            rs2=register_map[operands[1]]  # Rdst
     
     elif fmt == "D":
         # Three registers: ADD Rdst, Rsrc1, Rsrc2

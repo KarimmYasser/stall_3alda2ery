@@ -1,0 +1,352 @@
+    com -reportprogress 300 -93 -work work components/register.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity general_register
+    # -- Compiling architecture Behavioral of general_register
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:01
+    # Errors: 0, Warnings: 0
+    # Compiling register file...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work components/reg_file.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity general_register_file
+    # -- Compiling architecture Behavioral of general_register_file
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling memory interface package...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work common/memory_interface_pkg.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling package memory_interface_pkg
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling control unit...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../decode/control_unit.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Compiling entity Control_Unit
+    # -- Compiling architecture behavior of Control_Unit
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling IF/ID pipeline register...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/if_id_register.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Compiling entity if_id_register
+    # -- Compiling architecture Behavioral of if_id_register
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling ID/EX pipeline register...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/id_ex_reg_with_feedback.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity id_ex_reg_with_feedback
+    # -- Compiling architecture Behavioral of id_ex_reg_with_feedback
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling fetch stage...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work stages/1_fetch.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity Fetch
+    # -- Compiling architecture Behavior of Fetch
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling decode stage...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:57 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work stages/2_decode.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Compiling entity Decode
+    # -- Compiling architecture Behavior of Decode
+    # End time: 21:40:57 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling ALU...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/alu.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package std_logic_arith
+    # -- Loading package STD_LOGIC_UNSIGNED
+    # -- Compiling entity alu
+    # -- Compiling architecture behavioral of alu
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling forward unit...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/forward_unit.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package std_logic_arith
+    # -- Loading package STD_LOGIC_UNSIGNED
+    # -- Compiling entity forward_unit
+    # -- Compiling architecture behavioral of forward_unit
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling CCR...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/ccr.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package std_logic_arith
+    # -- Loading package STD_LOGIC_UNSIGNED
+    # -- Compiling entity ccr
+    # -- Compiling architecture behavioral of ccr
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling branch detection...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/branch_detection.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity branch_detection
+    # -- Compiling architecture behavioral of branch_detection
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling execute stage...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/execute_stage.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity execute_stage
+    # -- Compiling architecture behavioral of execute_stage
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling EX/MEM pipeline register...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/ex_mem_reg.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity ex_mem_reg
+    # -- Compiling architecture Behavioral of ex_mem_reg
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling fetch memory interface...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/fetch_mem_interface.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity fetch_mem_interface
+    # -- Compiling architecture Behavioral of fetch_mem_interface
+    # End time: 21:40:58 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling memory stage support (stack pointer/output port)...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:58 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../memory/stack_pointer.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity stack_pointer
+    # -- Compiling architecture Behavioral of stack_pointer
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:01
+    # Errors: 0, Warnings: 0
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../execute/output_port.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Compiling entity output_port
+    # -- Compiling architecture behavior of output_port
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling memory stage...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work stages/4_memory.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity Memory_Stage
+    # -- Compiling architecture Structural of Memory_Stage
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling data memory interface...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/data_mem_interface.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity data_mem_interface
+    # -- Compiling architecture Behavioral of data_mem_interface
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling memory arbiter...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/memory_arbiter.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity memory_arbiter
+    # -- Compiling architecture Behavioral of memory_arbiter
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling external RAM/memory unit...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../memory/ram.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package std_logic_textio
+    # -- Loading package std_logic_arith
+    # -- Loading package STD_LOGIC_UNSIGNED
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity ram
+    # -- Compiling architecture arch_ram of ram
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work ../memory/memory_unit.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity memory_unit
+    # -- Compiling architecture Structural of memory_unit
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling MEM/WB pipeline register...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work pipeline/mem_wb_reg.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity mem_wb_reg
+    # -- Compiling architecture Behavioral of mem_wb_reg
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling writeback stage...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:40:59 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work stages/5_writeback.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Compiling entity writeback
+    # -- Compiling architecture behavior of writeback
+    # End time: 21:40:59 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling top-level processor...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:41:00 on Dec 19,2025
+    # vcom -reportprogress 300 -93 -work work top_level_processor.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package memory_interface_pkg
+    # -- Compiling entity top_level_processor
+    # -- Compiling architecture structural of top_level_processor
+    # End time: 21:41:00 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 0, Warnings: 0
+    # Compiling execute integration testbench...
+    # Model Technology ModelSim - Intel FPGA Edition vcom 2020.1 Compiler 2020.02 Feb 28 2020
+    # Start time: 21:41:00 on Dec 19,2025
+    # vcom -reportprogress 300 -2008 -work work tb_top_level_execute.vhd 
+    # -- Loading package STANDARD
+    # -- Loading package TEXTIO
+    # -- Loading package std_logic_1164
+    # -- Loading package NUMERIC_STD
+    # -- Loading package std_logic_textio
+    # -- Compiling entity tb_top_level_execute
+    # -- Compiling architecture testbench of tb_top_level_execute
+    # ** Warning: tb_top_level_execute.vhd(62): (vcom-1236) Shared variables must be of a protected type.
+    # ** Warning: tb_top_level_execute.vhd(63): (vcom-1236) Shared variables must be of a protected type.
+    # ** Warning: tb_top_level_execute.vhd(64): (vcom-1236) Shared variables must be of a protected type.
+    # ** Error: tb_top_level_execute.vhd(79): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(80): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(81): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(82): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(83): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(84): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(85): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error: tb_top_level_execute.vhd(86): (vcom-1307) External name must denote an entire object, not a slice or indexed name of an object.
+    # ** Error (suppressible): tb_top_level_execute.vhd(68): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(69): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(70): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(71): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(73): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(74): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(75): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(76): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(77): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(79): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(80): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(81): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(82): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(83): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(84): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(85): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Error (suppressible): tb_top_level_execute.vhd(86): (vcom-1309) Target of the external name must be elaborated before the external name is evaluated.
+    # ** Warning: tb_top_level_execute.vhd(266): (vcom-1514) Range choice direction (downto) does not determine aggregate index range direction (to).
+    # ** Warning: tb_top_level_execute.vhd(273): (vcom-1514) Range choice direction (downto) does not determine aggregate index range direction (to).
+    # ** Warning: tb_top_level_execute.vhd(287): (vcom-1514) Range choice direction (downto) does not determine aggregate index range direction (to).
+    # ** Note: tb_top_level_execute.vhd(645): VHDL Compiler exiting
+    # End time: 21:41:00 on Dec 19,2025, Elapsed time: 0:00:00
+    # Errors: 25, Warnings: 6
+    # ** Error: D:/quartus/modelsim_ase/win32aloem/vcom failed.
+    # Error in macro ././run_top_level_execute.do line 97
+    # D:/quartus/modelsim_ase/win32aloem/vcom failed.
+    #     while executing
+    # "vcom -2008 -work work tb_top_level_execute.vhd"

@@ -8,6 +8,7 @@ ENTITY input_port IS
     PORT (
         clk : IN STD_LOGIC; -- Clock signal
         reset : IN STD_LOGIC; -- Reset signal
+        enable : IN STD_LOGIC; -- Enable signal
         data_in : IN STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0);
         data_out : OUT STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0)
     );
@@ -37,6 +38,13 @@ BEGIN
     END PROCESS;
 
     -- Assign the processed value to data_out
-    data_out <= temp_output_value;
+    process (enable, temp_output_value)
+    begin
+        if enable = '1' then
+            data_out <= temp_output_value;
+        else 
+            null; -- Do nothing when not enabled
+        end if;
+    end process;
 
 END ARCHITECTURE behavior;

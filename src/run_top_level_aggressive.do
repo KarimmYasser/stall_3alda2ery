@@ -40,6 +40,12 @@ echo "Compiling decode stage..."
 vcom -93 -work work stages/2_decode.vhd
 
 # Compile execute stage components
+echo "Compiling input port..."
+vcom -93 -work work ../memory/input_port.vhd
+
+echo "Compiling output port..."
+vcom -93 -work work ../execute/output_port.vhd
+
 echo "Compiling ALU..."
 vcom -93 -work work ../execute/alu.vhd
 
@@ -63,6 +69,34 @@ vcom -93 -work work pipeline/ex_mem_reg.vhd
 echo "Compiling memory interface package..."
 vcom -93 -work work common/memory_interface_pkg.vhd
 
+# Compile memory components
+echo "Compiling RAM..."
+vcom -93 -work work ../memory/ram.vhd
+
+echo "Compiling memory unit..."
+vcom -93 -work work ../memory/memory_unit.vhd
+
+echo "Compiling fetch memory interface..."
+vcom -93 -work work pipeline/fetch_mem_interface.vhd
+
+echo "Compiling data memory interface..."
+vcom -93 -work work pipeline/data_mem_interface.vhd
+
+echo "Compiling memory arbiter..."
+vcom -93 -work work pipeline/memory_arbiter.vhd
+
+echo "Compiling stack pointer..."
+vcom -93 -work work ../memory/stack_pointer.vhd
+
+echo "Compiling memory stage..."
+vcom -93 -work work stages/4_memory.vhd
+
+echo "Compiling MEM/WB pipeline register..."
+vcom -93 -work work pipeline/mem_wb_reg.vhd
+
+echo "Compiling writeback stage..."
+vcom -93 -work work stages/5_writeback.vhd
+
 # Compile top-level processor
 echo "Compiling top-level processor..."
 vcom -93 -work work top_level_processor.vhd
@@ -76,13 +110,14 @@ echo "Starting Simulation"
 echo "========================================="
 
 # Start simulation
-vsim -t 1ns work.tb_top_level_aggressive
+vsim -voptargs=+acc -t 1ns work.tb_top_level_aggressive
 
 # Add waves - Top level signals
 add wave -divider "Top-Level Signals"
 add wave -color "Yellow" {sim:/tb_top_level_aggressive/clk}
 add wave -color "Orange" {sim:/tb_top_level_aggressive/reset}
 add wave -color "Red" {sim:/tb_top_level_aggressive/interrupt}
+add wave -color "Cyan" -radix hexadecimal {sim:/tb_top_level_aggressive/inputport_data}
 
 
 
@@ -163,6 +198,68 @@ add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/read
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/read_address2}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/read_data1}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/read_data2}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/write_data}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/write_address}
+
+add wave -divider "Register File Contents (R0..R7)"
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(0)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(1)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(2)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(3)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(4)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(5)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(6)}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/DECODE_STAGE/GRF/general_register(7)}
+
+add wave -divider "Memory + Arbiter (DUT)"
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/mem_wb_signals}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/mem_mem_signals}
+add wave {sim:/tb_top_level_aggressive/DUT/mem_output_signal}
+add wave {sim:/tb_top_level_aggressive/DUT/mem_branch_taken}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/mem_alu_result}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/mem_rs2_data}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/mem_pc}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/mem_rd_addr}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/data_mem_interface_addr}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/data_mem_interface_read_data}
+add wave {sim:/tb_top_level_aggressive/DUT/data_mem_interface_stall}
+
+add wave -divider "Memory Stage (Instance)"
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/wb_signals_in}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/mem_signals_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/alu_result_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/rs2_data_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/read_data_out}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/alu_result_out}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/rd_addr_out}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/sp_out_debug}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/mem_addr_out}
+
+add wave -divider "MEM/WB + Writeback"
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/wb_signals_in}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/wb_signals_out}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/read_data_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/read_data_out}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/alu_result_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/alu_result_out}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/rd_addr_in}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/rd_addr_out}
+add wave -radix binary {sim:/tb_top_level_aggressive/DUT/WRITEBACK_STAGE_INST/wb_select}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/WRITEBACK_STAGE_INST/mem_read_data}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/WRITEBACK_STAGE_INST/alu_result}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/WRITEBACK_STAGE_INST/wb_data}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/wb_data_out}
+
+add wave -divider "RAM Bus (dbg_*)"
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/dbg_pc}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/dbg_fetched_instruction}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/dbg_sp}
+add wave {sim:/tb_top_level_aggressive/dbg_stall}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/dbg_ram_addr}
+add wave {sim:/tb_top_level_aggressive/dbg_ram_read_en}
+add wave {sim:/tb_top_level_aggressive/dbg_ram_write_en}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/dbg_ram_data_in}
+add wave -radix hexadecimal {sim:/tb_top_level_aggressive/dbg_ram_data_out}
 
 # Configure wave window
 configure wave -namecolwidth 400

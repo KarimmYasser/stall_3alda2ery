@@ -56,9 +56,9 @@ BEGIN
     BEGIN
         IF falling_edge(clk) THEN
             IF (reset = '1') THEN
-                -- Reset all registers to zero
+                -- Initialize registers: R0=0, R1=1, R2=2, ..., R7=7
                 FOR i IN 0 TO REGISTER_NUMBER - 1 LOOP
-                    general_register(i) <= (OTHERS => '0');
+                    general_register(i) <= std_logic_vector(to_unsigned(i, REGISTER_SIZE));
                 END LOOP;
                 
             ELSIF (write_enable = '1') THEN
@@ -66,7 +66,7 @@ BEGIN
                 general_register(TO_INTEGER(UNSIGNED(write_address))) <= write_data;
                 
                 -- Optional: Hardwire R0 to zero (uncomment if needed)
-                -- general_register(0) <= (OTHERS => '0');
+                general_register(0) <= (OTHERS => '0');
             END IF;
         END IF;
     END PROCESS write_proc;

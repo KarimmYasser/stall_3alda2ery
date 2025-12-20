@@ -15,7 +15,7 @@ use work.memory_interface_pkg.all;
 
 entity memory_unit is
     generic (
-        INIT_FILENAME : string := "memory_init.txt";
+        INIT_FILENAME : string := "test_output.mem";
         MEMORY_DEPTH  : integer := 262144
     );
     port(
@@ -34,7 +34,7 @@ architecture Structural of memory_unit is
     -- RAM component
     component ram is
         generic (
-            INIT_FILENAME : string := "memory_init.txt";
+            INIT_FILENAME : string := "test_output.mem";
             MEMORY_DEPTH  : integer := 262144
         );
         port(

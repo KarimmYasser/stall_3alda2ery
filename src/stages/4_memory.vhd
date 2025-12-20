@@ -12,7 +12,6 @@ ENTITY Memory_Stage IS
         -- Control Signals from EX/MEM
         wb_signals_in : IN  STD_LOGIC_VECTOR(2 DOWNTO 0); -- (2)RegWrite, (1)MemtoReg, (0)PC-select (Used for PC vs PC+1)
         mem_signals_in: IN  STD_LOGIC_VECTOR(6 DOWNTO 0); -- (6)WDselect, (5)MEMRead, (4)MEMWrite, (3)StackRead, (2)StackWrite, (1)CCRStore, (0)CCRLoad
-        input_signal  : IN  STD_LOGIC;
         output_signal : IN  STD_LOGIC;
         
         -- Data from EX/MEM
@@ -23,7 +22,6 @@ ENTITY Memory_Stage IS
         ccr_in        : IN  STD_LOGIC_VECTOR(2 DOWNTO 0); -- Current CCR
         
         -- External I/O
-        in_port_data  : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
         out_port_data : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         
         -- Memory Interface (to Arbiter)
@@ -34,11 +32,15 @@ ENTITY Memory_Stage IS
         wb_signals_out: OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
         read_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         alu_result_out: OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        pc_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+       -- pc_out        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0); -- 
         rd_addr_out   : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
         
         -- Additional Outputs
-        sp_out_debug  : OUT STD_LOGIC_VECTOR(17 DOWNTO 0)
+        sp_out_debug  : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
+        mem_addr_out   : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
+        --for debuging
+        output_data : out std_logic_vector(31 downto 0); -- Data to output port
+        write_data_to_interface: out std_logic_vector(31 downto 0)
     );
 END ENTITY Memory_Stage;
 
@@ -55,27 +57,28 @@ ARCHITECTURE Structural OF Memory_Stage IS
             reset       : IN STD_LOGIC;
             stack_read  : IN STD_LOGIC;
             stack_write : IN STD_LOGIC;
+            ccr_load :in std_logic;
+            ccr_store :in std_logic;
             sp_out      : OUT STD_LOGIC_VECTOR(ADDR_WIDTH - 1 DOWNTO 0)
         );
     END COMPONENT stack_pointer;
 
-    -- Input Port Component
-    COMPONENT input_port IS
-        GENERIC (
-            DATA_SIZE : INTEGER := 32
-        );
-        PORT (
-            clk      : IN STD_LOGIC;
-            reset    : IN STD_LOGIC;
-            data_in  : IN STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0);
-            data_out : OUT STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0)
-        );
-    END COMPONENT input_port;
+    component output_port IS
+    GENERIC (
+        DATA_SIZE : INTEGER := 32
+    );
+    PORT (
+        enable: in std_logic;
+        data_in : IN STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0);
+        data_out : OUT STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0)
+    );
+    END component output_port;
+
 
     -- Signals
     SIGNAL sp_current    : STD_LOGIC_VECTOR(17 DOWNTO 0);
     SIGNAL input_buffer  : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    
+    signal tb_output_data : std_logic_vector(31 downto 0); -- Data to output port
     -- Address Mux Signals
     SIGNAL addr_mux1_out : STD_LOGIC_VECTOR(17 DOWNTO 0);
     SIGNAL mem_addr_final: STD_LOGIC_VECTOR(17 DOWNTO 0);
@@ -94,6 +97,7 @@ ARCHITECTURE Structural OF Memory_Stage IS
     ALIAS stack_read   : STD_LOGIC IS mem_signals_in(3);
     ALIAS stack_write  : STD_LOGIC IS mem_signals_in(2);
     ALIAS ccr_store    : STD_LOGIC IS mem_signals_in(1); -- Controls Data Mux (Rs2 vs CCR)
+    ALIAS ccr_load     : STD_LOGIC is mem_signals_in(0);
     ALIAS pc_select    : STD_LOGIC IS wb_signals_in(0);  -- Controls PC Mux (PC vs PC+1)
     
 BEGIN
@@ -105,19 +109,21 @@ BEGIN
             reset       => reset,
             stack_read  => stack_read,
             stack_write => stack_write,
+            ccr_load => ccr_load,
+            ccr_store => ccr_store,
             sp_out      => sp_current
         );
         
     sp_out_debug <= sp_current;
+    OUT_PORT : output_port
+    GENERIC MAP (DATA_SIZE => 32)
+    PORT MAP (
+        enable => output_signal,
+        data_in => rs2_data_in,
+        data_out => tb_output_data
+    );
+    output_data <= tb_output_data; -- for tb observation
 
-    -- 2. Input Port Instance
-    IN_PORT_INST : input_port
-        PORT MAP (
-            clk      => clk,
-            reset    => reset,
-            data_in  => in_port_data,
-            data_out => input_buffer
-        );
 
     -- ========================================================================
     -- 3. Address Generation Logic
@@ -128,9 +134,9 @@ BEGIN
     -- (Note: For POP, stack_pointer logic might imply SP+1, but here we strictly follow "Use SP as address" 
     --  and let the pointer update logic handle the post/pre increment nature via the component's internal timing 
     --  or we assume SP is correct for the operation. Given prompt: "Stack PUSH/POP: The circuit uses SP as the address.")
-    PROCESS (stack_read, stack_write, sp_current, alu_result_in)
+    PROCESS (stack_read, stack_write, sp_current, alu_result_in, ccr_load, ccr_store)
     BEGIN
-        IF stack_read = '1' OR stack_write = '1' THEN
+        IF stack_read = '1' OR stack_write = '1' or ccr_load='1' or ccr_store='1' THEN
              addr_mux1_out <= sp_current;
              -- Refinement: If Pop (Empty Descending), we might need SP+1. 
              -- But adhering to "Circuit uses SP as address", we output SP. 
@@ -140,7 +146,7 @@ BEGIN
              -- Diagram says: "Source Selection: ... select between ALU res and SP".
              -- It does NOT mention SP+1. So use SP.
         ELSE
-             addr_mux1_out <= alu_result_in(17 DOWNTO 0);
+             addr_mux1_out <= alu_result_in(17 DOWNTO 0); 
         END IF;
     END PROCESS;
     
@@ -201,6 +207,7 @@ BEGIN
     -- 5. Memory Interface Request
     -- ========================================================================
     mem_req.addr       <= mem_addr_final;
+    mem_addr_out    <= mem_addr_final; -- Output for interface
     mem_req.read_req   <= mem_read OR stack_read; -- "OR gate combines... MEM Read is driven by control..."
     mem_req.write_req  <= mem_write OR stack_write; -- Logic implies these enable access
     mem_req.write_data <= mem_data_final;
@@ -210,14 +217,6 @@ BEGIN
     -- ========================================================================
     
     -- Read Data Mux (Memory vs Input Port) - Kept from previous logical requirement
-    PROCESS (input_signal, input_buffer, mem_resp)
-    BEGIN
-        IF input_signal = '1' THEN
-            read_data_out <= input_buffer;
-        ELSE
-            read_data_out <= mem_resp.read_data;
-        END IF;
-    END PROCESS;
 
     -- Output Port Logic (Direct mapping from Rs2, or from Write Data?)
     -- Diagram explanation for Write Data says "prepares payload to be written to memory".
@@ -227,7 +226,8 @@ BEGIN
     -- Pass-throughs
     wb_signals_out <= wb_signals_in;
     alu_result_out <= alu_result_in;
-    pc_out         <= pc_in;
     rd_addr_out    <= rd_addr_in;
 
+    read_data_out <= mem_resp.read_data;
+    write_data_to_interface<=mem_data_final;
 END ARCHITECTURE Structural;

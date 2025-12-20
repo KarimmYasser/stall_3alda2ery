@@ -25,6 +25,8 @@ ENTITY stack_pointer IS
         -- Stack operation control signals
         stack_read  : IN STD_LOGIC;             -- POP/RET/RTI operation (increment SP)
         stack_write : IN STD_LOGIC;             -- PUSH/CALL/INT operation (decrement SP)
+        ccr_load : in std_logic;
+        ccr_store :in std_logic;
         
         -- Stack pointer output
         sp_out : OUT STD_LOGIC_VECTOR(ADDR_WIDTH - 1 DOWNTO 0)
@@ -41,7 +43,7 @@ BEGIN
     sp_out <= STD_LOGIC_VECTOR(sp);
 
     -- Sequential logic: Update SP on clock edge or reset
-    PROCESS (clk, reset)
+    PROCESS (clk, reset,stack_read, ccr_load)
     BEGIN
         IF (reset = '1') THEN
             -- Asynchronous reset: Set SP to top of stack
@@ -51,23 +53,25 @@ BEGIN
             -- Synchronous update: Load next SP value
             sp <= sp_next;
         END IF;
+        IF ((stack_read = '1' or ccr_load ='1') and clk ='1') THEN
+            sp <= sp + 1;
+        end if;
     END PROCESS;
 
     -- Combinational logic: Calculate next SP value
-    PROCESS (sp, stack_read, stack_write)
+    PROCESS (sp, stack_write, ccr_store)
     BEGIN
         -- Default: No change to SP
         sp_next <= sp;
 
         -- Decrement SP (stack grows downward)
         -- Priority: WRITE (PUSH, CALL, INT)
-        IF (stack_write = '1') THEN
+        IF (stack_write = '1' or ccr_store ='1') THEN
             sp_next <= sp - 1;
         
         -- Increment SP (stack shrinks upward)
         -- READ (POP, RET, RTI)
-        ELSIF (stack_read = '1') THEN
-            sp_next <= sp + 1;
+
         END IF;
     END PROCESS;
 

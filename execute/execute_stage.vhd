@@ -110,6 +110,20 @@ architecture behavioral of execute_stage is
     );
   end component;
 
+  component input_port is
+    GENERIC (
+        DATA_SIZE : INTEGER := 32
+    );
+    PORT (
+        clk : IN STD_LOGIC; -- Clock signal
+        reset : IN STD_LOGIC; -- Reset signal
+        enable : IN STD_LOGIC; -- Enable signal
+        data_in : IN STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0);
+        data_out : OUT STD_LOGIC_VECTOR(DATA_SIZE - 1 DOWNTO 0)
+    );
+  end component input_port;
+
+
   -- Internal Signals
   signal forward1_signal : std_logic_vector(1 downto 0); -- Forward control for operand 1
   signal forward2_signal : std_logic_vector(1 downto 0); -- Forward control for operand 2
@@ -122,6 +136,7 @@ architecture behavioral of execute_stage is
   signal alu_result : std_logic_vector(31 downto 0); -- ALU result
   signal alu_flags : std_logic_vector(2 downto 0); -- ALU flags [0]=C,[1]=N,[2]=Z
   signal alu_flags_enable : std_logic_vector(2 downto 0); -- ALU flags enable
+  signal input_port_data : std_logic_vector(31 downto 0); -- Sign-extended immediate
 begin
   -- Forward Unit Instance
   FU : forward_unit
@@ -191,6 +206,15 @@ begin
     ccr => ccr_out_sig,
     branch_taken => branch_taken_sig
   );
+  input_PORT_INST : input_port
+    GENERIC MAP (DATA_SIZE => 32)
+    PORT MAP (
+        clk => clk,
+        reset => rst,
+        enable => input_signal,
+        data_in => in_port,
+        data_out => input_port_data
+    );
 
   -- EX/MEM Pipeline Register Outputs with Flush Logic
   ex_mem_wb_signals <= wb_signals when flush = '0' else
@@ -206,7 +230,7 @@ begin
   -- Select between ALU result or INPORT
   with input_signal select
     ex_mem_alu_result <= alu_result when '0',
-    in_port when '1',
+    input_port_data when '1',
     (others => '0') when others;
 
   ex_mem_pc <= pc;

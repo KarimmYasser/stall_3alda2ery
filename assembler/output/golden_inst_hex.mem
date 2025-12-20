@@ -1,0 +1,25 @@
+// Machine code generated from: ..\assembler\tests\golden_inst.asm
+// Total words: 21
+// Format: ADDR | HEX | Source
+//
+0000  28000000  ; LDM R0, 1000
+0001  000003E8  ;   ; immediate/offset
+0002  28000040  ; LDM R1, 0x1234
+0003  00001234  ;   ; immediate/offset
+0004  A8000001  ; STD R1, 0(R0)
+0005  00000000  ;   ; immediate/offset
+0006  A0000080  ; LDD R2, 0(R0)
+0007  00000000  ;   ; immediate/offset
+0008  90000002  ; PUSH R2
+0009  980000C0  ; POP R3
+0010  280001C0  ; LDM R7, 2000
+0011  000007D0  ;   ; immediate/offset
+0012  A8000038  ; STD R0, 0(R7)
+0013  00000000  ;   ; immediate/offset
+0014  A8000039  ; STD R1, 1(R7)
+0015  00000001  ;   ; immediate/offset
+0016  A800003A  ; STD R2, 2(R7)
+0017  00000002  ;   ; immediate/offset
+0018  A800003B  ; STD R3, 3(R7)
+0019  00000003  ;   ; immediate/offset
+0020  08000000  ; HLT

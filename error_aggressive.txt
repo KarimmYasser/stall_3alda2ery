@@ -1,0 +1,11 @@
+# ** Warning: (vsim-3473) Component instance "SP_INST : stack_pointer" is not bound.
+#    Time: 0 ns  Iteration: 0  Instance: /tb_top_level_aggressive/DUT/MEMORY_STAGE_INST File: stages/4_memory.vhd
+# Loading work.output_port(behavior)
+# Loading work.data_mem_interface(behavioral)
+# Loading work.memory_arbiter(behavioral)
+# Loading work.memory_unit(structural)
+# Loading work.ram(arch_ram)
+# Loading work.mem_wb_reg(behavioral)
+# Loading work.writeback(behavior)
+# ** Warning: (vsim-8683) Uninitialized out port /tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/read_data_out(31 downto 0) has no driver.
+# This port will contribute value (UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU) to the signal network.

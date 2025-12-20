@@ -40,7 +40,8 @@ entity Decode is
         rs2_addr_out: out std_logic_vector(2 downto 0);
         rd_addr_out: out std_logic_vector(2 downto 0);
         WB_value : in std_logic_vector(31 downto 0);
-        WB_enable : in std_logic
+        WB_enable : in std_logic;
+        WB_addr : in std_logic_vector (2 downto 0)
     );
 end entity Decode;
 
@@ -164,7 +165,7 @@ begin
     --Forwarding Unit--
     rAddr1 <= instruction(5 downto 3) when CSwap='0' else instruction(2 downto 0);
     rAddr2 <= instruction(2 downto 0) when CSwap='0' else instruction(5 downto 3);
-    wAddr <= instruction(8 downto 6);
+    wAddr <= WB_addr;
     dataIn <= WB_value;
     we <= WB_enable;  
 
@@ -175,8 +176,8 @@ begin
     -- Address calculation and outputs
     rd_addr_signal <= instruction(8 downto 6) when Write_in_src2_signal='0' else rAddr2;
     rd_addr_out <= rd_addr_signal;
-    rs1_addr_out <= instruction(5 downto 3);
-    rs2_addr_out <= instruction(2 downto 0);
+    rs1_addr_out <= rAddr1;
+    rs2_addr_out <= rAddr2;
     index_out <= instruction(26 downto 25);  -- From instruction bits
     pc_out <= PC;
     
