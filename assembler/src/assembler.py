@@ -172,6 +172,10 @@ def encode_instruction(instruction, operands, symbol_table=None):
     elif fmt == "B":
         # Single register: INC, NOT, IN, PUSH
         rdst = register_map[operands[0]]
+        if instruction == "INC":
+            rs1 = register_map[operands[0]]  # INC uses rs2 as the register to increment
+        if instruction == "NOT":
+            rs1 = register_map[operands[0]]  # NOT uses rs2 as the register to negate
     
     elif fmt == "C":
         # Two registers: MOV Rsrc, Rdst | SWAP Rsrc, Rdst

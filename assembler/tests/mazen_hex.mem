@@ -1,5 +1,13 @@
 // Machine code generated from: ..\assembler\tests\mazen.asm
-// Total words: 1
+// Total words: 9
 // Format: ADDR | HEX | Source
 //
 0000  90000003  ; push r3                ;x[sp] <= R[r2]
+0001  98000140  ; pop  r5
+0002  00000000  ; nop
+0003  10000000  ; setc
+0004  200001C0  ; not r7
+0005  4800011D  ; add r4, r3, r5
+0006  18000180  ; inc r6
+0007  80000006  ; out r6
+0008  88000040  ; in r1

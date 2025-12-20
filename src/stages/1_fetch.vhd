@@ -63,7 +63,7 @@ begin
     pc_out <= pc_current;
     
     -- PC enable: update PC when not stalled
-    pc_enable_signal <= not Stall;
+    pc_enable_signal <= not Stall or mem_branch or branch_exe or branch_decode;
     
     -- MUX: When stalled or interrupted, replace opcode with microcode
     -- Otherwise, use normal opcode from instruction memory
@@ -84,7 +84,7 @@ begin
         elsif (branch_exe = '1') then
             pc_next <= immediate_in;  -- Branch from execute stage (using immediate)
         elsif (branch_decode = '1') then
-            pc_next <= immediate_in;  -- Branch from decode stage (JMP instruction)
+            pc_next <= instruction_in;  -- Branch from decode stage (JMP instruction)
         else
             pc_next <= std_logic_vector(unsigned(pc_current) + 1);  -- Normal increment
         end if;

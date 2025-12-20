@@ -429,6 +429,7 @@ architecture structural of top_level_processor is
     signal exe_mem_rd_addr_out : std_logic_vector(2 downto 0);
     signal exe_branch_enable : std_logic;
     signal tb_exe_output_port : std_logic_vector(31 downto 0);
+    signal mem_forward_data : std_logic_vector(31 downto 0);
     -- ========== EX/MEM Register Output Signals ==========
     signal mem_wb_signals : std_logic_vector(2 downto 0);
     signal mem_mem_signals : std_logic_vector(6 downto 0);
@@ -518,7 +519,7 @@ begin
         mem_branch => mem_branch_signal,
         mem_read_data_in => data_mem_interface_read_data,
         Micro_inst => micro_inst_signal,
-        immediate_in => immediate_to_fetch,
+        immediate_in => immediate_signal,
         instruction_out => fetch_instruction_out,  -- 27 bits
         opcode_out => fetch_opcode_out,            -- 5 bits (possibly micro-opcode)
         pc_out => fetch_pc_out
@@ -622,7 +623,7 @@ begin
     );
     
     -- ========== EXECUTE STAGE ==========
-    
+    immediate_signal<= ifid_opcode_out & ifid_instruction_out;
     EXECUTE_STAGE_INST: execute_stage port map(
         clk => clk,
         rst => reset,
@@ -649,9 +650,9 @@ begin
         ccr_from_stack => ccr_from_stack_signal,
         rdst_mem => mem_stage_rd_addr, --#########################
         rdst_wb => wb_stage_rd_addr, --############
-        reg_write_mem => mem_read_or_stack_read, --##############
+        reg_write_mem =>mem_wb_signals(2) , --##############
         reg_write_wb => wb_stage_wb_signals(2), --#########
-        mem_forwarded_data => data_mem_interface_read_data, --##########
+        mem_forwarded_data => mem_forward_data, --##########
         wb_forwarded_data => wb_data_out , --######################
         swap_forwarded_data => swap_forwarded_data_signal, --?????????????????????????????????????????
         ex_mem_wb_signals => exe_mem_wb_signals_out,
@@ -726,6 +727,8 @@ begin
         output_data => output_port_data_signal,
         write_data_to_interface =>write_data_to_interface_signal
     );
+    mem_forward_data <= mem_alu_result when mem_wb_signals(1)='0'else
+                            data_mem_interface_read_data ;
 ---========= Data Memory Interface Instance ==========
 address_out_mem <= (31 downto 18 => '0') & data_mem_interface_addr;
     DATA_MEMORY_INTERFACE_INST: data_mem_interface port map(

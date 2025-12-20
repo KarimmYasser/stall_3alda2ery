@@ -234,6 +234,7 @@ add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/rd_addr_out}
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/sp_out_debug}
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/mem_addr_out}
+add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/output_data}
 
 add wave -divider "MEM/WB + Writeback"
 add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEM_WB_REGISTER/wb_signals_in}
