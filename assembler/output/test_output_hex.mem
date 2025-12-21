@@ -1,5 +1,5 @@
 // Machine code generated from: ..\assembler\tests\mazen.asm
-// Total words: 15
+// Total words: 12
 // Format: ADDR | HEX | Source
 //
 0000  90000003  ; push r3                ;x[sp] <= R[r2]
@@ -10,10 +10,7 @@
 0005  4800011D  ; add r4, r3, r5
 0006  180001B0  ; inc r6
 0007  80000006  ; out r6  ## forward outdata
-0008  88000040  ; in r1
-0009  30000108  ; mov r1, r4
-0010  38000061  ; swap r4, r1
-0011  500000AE  ; sub r2, r5, r6
-0012  40000050  ; iadd r1, r2, 10
-0013  0000000A  ;   ; immediate/offset
-0014  08000000  ; hlt
+0008  78000000  ; jmp  5
+0009  00000005  ;   ; immediate/offset
+0010  480000AF  ; add r2, r5, r7
+0011  08000000  ; hlt

@@ -371,6 +371,7 @@ architecture structural of top_level_processor is
     signal fetch_mem_interface_stall: std_logic :='0';
     signal fetch_mem_interface_arb_if: fetch_mem_req_t;
     signal fetch_mem_interface_arb_resp: fetch_mem_resp_t;
+    signal fetch_enable_signal : std_logic;
     --====================================================================
 
     -- ========== IF/ID Register Signals ==========
@@ -525,12 +526,13 @@ begin
         pc_out => fetch_pc_out
     );
     fetch_mem_interface_pc <= fetch_pc_out;
+    fetch_enable_signal <= not stall_signal;
     --======fetch interface =============
     fetch_memory_interface: fetch_mem_interface port map(
         clk => clk,
         reset => reset,
         pc => fetch_mem_interface_pc,
-        fetch_enable => fetch_mem_interface_enable,
+        fetch_enable => fetch_enable_signal,
         instruction => fetch_mem_interface_instruction,
         fetch_stall => fetch_mem_interface_stall,
         arb_if => fetch_mem_interface_arb_if,

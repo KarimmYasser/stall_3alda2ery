@@ -118,6 +118,7 @@ architecture behavior of Control_Unit is
     -----------------------------------------------------------------
     signal Imm_hazard_signal : std_logic := '0';
     signal clk_div2 : std_logic := '0';
+    signal mem_will_be_used_vec_out_temp : std_logic_vector(0 downto 0);
     ------------------------------------------------------------------
     -- Final outputs are multiplexed between micro_ and main_
     ------------------------------------------------------------------
@@ -141,12 +142,13 @@ begin
     REG_MEM_WILL_BE_USED: general_register
         GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)
         PORT MAP (
-            clk => clk_div2,
+            clk => clk,
             reset => reset,
             write_enable => '1',
             data_in => mem_will_be_used_vec_in,
             data_out => mem_will_be_used_vec_out
         );
+        
     -- Register for Imm_in_use feedback
     REG_IMM_IN_USE: general_register
         GENERIC MAP (REGISTER_SIZE => 1, RESET_VALUE => 0)

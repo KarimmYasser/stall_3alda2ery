@@ -75,7 +75,7 @@ begin
     
     -- Combinational logic for next PC calculation
     process(reset, mem_branch, branch_decode, branch_exe, 
-            mem_read_data_in, immediate_in, pc_current)
+            mem_read_data_in, immediate_in, pc_current , instruction_in)
     begin
         if (reset = '1') then
             pc_next <= (others => '0');  -- Reset PC to 0
