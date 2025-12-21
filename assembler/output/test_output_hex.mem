@@ -1,26 +1,50 @@
-// Machine code generated from: ..\assembler\tests\mazen.asm
-// Total words: 22
+// Machine code generated from: ..\assembler\tests\Branch.asm
+// Total words: 46
 // Format: ADDR | HEX | Source
 //
-0000  90000003  ; push r3                ;x[sp] <= R[r2]
-0001  98000140  ; pop  r5
-0002  00000000  ; nop
-0003  10000000  ; setc
-0004  200001F8  ; not r7
-0005  4800011D  ; add r4, r3, r5
-0006  180001B0  ; inc r6
-0007  80000006  ; out r6  ## forward outdata
-0008  88000040  ; in r1
-0009  30000108  ; mov r1, r4
-0010  38000061  ; swap r4, r1
-0011  500000AE  ; sub r2, r5, r6
-0012  40000050  ; iadd r1, r2, 10
-0013  0000000A  ;   ; immediate/offset
-0014  28000100  ; ldm r4, 100
-0015  00000064  ;   ; immediate/offset
-0016  A0000098  ; LDD R2, 100(R3)
-0017  00000064  ;   ; immediate/offset
-0018  78000000  ; jmp  5
-0019  00000005  ;   ; immediate/offset
-0020  480000AF  ; add r2, r5, r7
-0021  08000000  ; hlt
+0000  000000C8  ; 200
+0001  00000190  ; 400
+0002  00000320  ; 800
+0003  00000A00  ; 0A00
+0800  48000000  ; ADD R0,R0,R0    R0 = 0, Z=1
+0801  80000006  ; OUT R6
+0802  C8000000  ; RTI
+2560  00000000  ; NOP
+2561  80000001  ; OUT R1 // R1=80
+2562  C8000000  ; RTI
+0200  88000040  ; IN R1     #R1=30
+0201  88000080  ; IN R2     #R2=50
+0202  880000C0  ; IN R3     #R3=100
+0203  88000100  ; IN R4     #R4=300
+0204  88000180  ; IN R6     #R6=FFFF
+0205  880001C0  ; IN R7     #R7=FFFF
+0206  90000004  ; Push R4   #sp=3FFFE, M[3FFFF]=300
+0207  78000000  ; JMP 30
+0208  0000001E  ;   ; immediate/offset
+0209  180001F8  ; INC R7	  # this statement shouldn't be executed,
+0030  5800014D  ; AND R5,R1,R5   #R5=0 , Z = 1
+0031  C4000000  ; INT0
+0032  60000000  ; JZ  50      #Jump taken, Z = 0
+0033  00000032  ;   ; immediate/offset
+0034  180001F8  ; INC R7      #this statement shouldn't be executed
+0050  60000000  ; JZ 100      #Jump Not taken
+0051  00000064  ;   ; immediate/offset
+0052  20000168  ; NOT R5     #R5=FFFFFFFF, Z = 0,
+0053  18000168  ; INC R5     #R5=0, Z=1, C=1
+0054  88000180  ; IN  R6     #R6=400, flag no change
+0055  60000000  ; JZ  400     #jump taken, Z = 0
+0056  00000190  ;   ; immediate/offset
+0057  18000048  ; INC R1     #shouldn't be executed
+0400  98000180  ; POP R6     #R6=300, SP=3FFFF
+0401  B0000000  ; Call 300    #SP=3FFFE, M[3FFFF] = PC + 1
+0402  0000012C  ;   ; immediate/offset
+0403  C6000000  ; INT1
+0404  180001B0  ; INC R6	  #R6=401, this statement shouldn't be executed till call returns, C--> 0, N-->0,Z-->0
+0405  00000000  ; NOP
+0406  00000000  ; NOP
+0300  4800019E  ; Add R6,R3,R6 #R6=400
+0301  4800004A  ; Add R1,R1,R2 #R1=80, C->0,N=0, Z=0
+0302  B8000000  ; RET
+0303  180001F8  ; INC R7           #this shouldnot be executed
+0500  00000000  ; NOP
+0501  00000000  ; NOP

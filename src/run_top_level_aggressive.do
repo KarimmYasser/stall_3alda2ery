@@ -123,7 +123,6 @@ add wave -color "Cyan" -radix hexadecimal {sim:/tb_top_level_aggressive/inputpor
 
 # Add waves - Fetch Stage
 add wave -divider "Fetch Stage"
-add wave -radix hexadecimal {sim:/tb_top_level_aggressive/instruction}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/FETCH_STAGE/pc_current}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/FETCH_STAGE/pc_next}
 add wave {sim:/tb_top_level_aggressive/DUT/FETCH_STAGE/pc_enable_signal}
@@ -229,7 +228,6 @@ add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/wb_si
 add wave -radix binary {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/mem_signals_in}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/alu_result_in}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/rs2_data_in}
-add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/read_data_out}
 add wave -radix hexadecimal {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/alu_result_out}
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/rd_addr_out}
 add wave -radix unsigned {sim:/tb_top_level_aggressive/DUT/MEMORY_STAGE_INST/sp_out_debug}

@@ -250,12 +250,10 @@ begin
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "SWAP-INT-C1", instruction);
         
-        interrupt <= '1';
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "SWAP-INT-C2", instruction);
         
-        interrupt <= '0';
         for i in 1 to 4 loop
             cycle_count := cycle_count + 1;
             wait until rising_edge(clk);
@@ -472,7 +470,6 @@ begin
         write(l, string'("--------------------------------------------------------------------------------"));
         writeline(output, l);
         
-        reset <= '1';
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "RESET-ASSERT", instruction);
@@ -481,7 +478,6 @@ begin
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "RESET-HOLD", instruction);
         
-        reset <= '0';
         cycle_count := cycle_count + 1;
         wait until rising_edge(clk);
         log_cycle_state(cycle_count, "RESET-RELEASE", instruction);

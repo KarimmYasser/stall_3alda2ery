@@ -64,8 +64,13 @@ def parse_line(line):
     Parse a line of assembly code.
     Returns: (label, instruction, operands)
     """
-    # Remove comments
-    line = line.split(';')[0].split('#')[0].strip()
+    # Remove comments (both ; and # style)
+    comment_pos = len(line)
+    for comment_char in [';', '#']:
+        pos = line.find(comment_char)
+        if pos != -1 and pos < comment_pos:
+            comment_pos = pos
+    line = line[:comment_pos].strip()
 
     if not line:
         return None, None, []
@@ -87,14 +92,44 @@ def parse_line(line):
         return label, None, []
     
     instruction = parts[0].upper()
-    operands = [operand.strip(',') for operand in parts[1:]]
+    
+    # Check if instruction has a digit at the end (like INT0, INT1)
+    # This handles cases where instruction and operand are merged
+    if instruction.startswith('INT') and len(instruction) > 3:
+        # Extract the digit and make it an operand
+        operand_part = instruction[3:]
+        instruction = 'INT'
+        parts = [instruction, operand_part] + parts[1:]
+    
+    # Handle operands: split by commas first, then by spaces
+    # This handles both \"add r1, r2, r3\" and \"add r1,r2,r3\"
+    operands_str = ' '.join(parts[1:])
+    
+    # Split by comma and clean up
+    operands = []
+    if operands_str:
+        # Split by comma and strip whitespace
+        operands_raw = [op.strip() for op in operands_str.split(',')]
+        # Filter out operands that contain '=' or other invalid characters (likely comments)
+        for op in operands_raw:
+            # Remove any trailing/leading spaces and check for comment patterns
+            op = op.strip()
+            # If operand contains space followed by non-parenthesis, it's likely a comment
+            if ' ' in op and '(' not in op:
+                # Take only the first part before space
+                op = op.split()[0]
+            # Stop at first operand containing '='
+            if '=' in op:
+                break
+            if op:  # Only add non-empty operands
+                operands.append(op)
     
     parsed_operands = []
     for operand in operands:
         if '(' in operand and ')' in operand:
             # Extract offset and register from format: offset(Rsrc)
-            offset = operand.split('(')[0]
-            register = operand.split('(')[1].replace(')', '').upper()
+            offset = operand.split('(')[0].strip()
+            register = operand.split('(')[1].replace(')', '').strip().upper()
             parsed_operands.append(offset)
             parsed_operands.append(register)
         else:
@@ -106,7 +141,7 @@ def parse_line(line):
 def parse_immediate(value_str, symbol_table=None):
     """
     Parse immediate value from string.
-    Handles decimal, hex (0x), negative numbers, and labels.
+    Handles decimal, hex (0x or bare), negative numbers, and labels.
     Returns integer value.
     """
     value_str = value_str.strip()
@@ -118,7 +153,15 @@ def parse_immediate(value_str, symbol_table=None):
     if value_str.startswith("0X") or value_str.startswith("0x"):
         return int(value_str, 16)
     else:
-        return int(value_str)
+        # Try to parse as decimal first
+        try:
+            return int(value_str, 10)
+        except ValueError:
+            # If that fails, try as hex (for bare hex like 200, 0A00)
+            try:
+                return int(value_str, 16)
+            except ValueError:
+                raise ValueError(f"Invalid immediate value: {value_str}")
 
 
 def sign_extend_to_32bit(value):
@@ -282,12 +325,32 @@ def pass1_build_symbol_table(lines):
                 raise ValueError(f"Line {line_num}: Duplicate label '{label}'")
             symbol_table[label] = current_address
         
+        # Handle .ORG directive
+        if instruction and instruction == ".ORG":
+            if not operands or len(operands) < 1:
+                raise ValueError(f"Line {line_num}: .ORG requires an address")
+            try:
+                new_address = parse_immediate(operands[0], symbol_table)
+                current_address = new_address
+            except Exception as e:
+                raise ValueError(f"Line {line_num}: Invalid .ORG address: {e}")
+            continue
+        
         # If there's an instruction, advance address
         if instruction:
+            # Check if it's a raw data value (hex number)
             if instruction not in instruction_map:
-                raise ValueError(f"Line {line_num}: Unknown instruction '{instruction}'")
-            num_words = instruction_map[instruction]["num_words"]
-            current_address += num_words
+                # Try to parse as data value
+                try:
+                    # If it parses as a number, it's data (takes 1 word)
+                    parse_immediate(instruction, symbol_table)
+                    current_address += 1
+                    continue
+                except:
+                    raise ValueError(f"Line {line_num}: Unknown instruction '{instruction}'")
+            else:
+                num_words = instruction_map[instruction]["num_words"]
+                current_address += num_words
     
     return symbol_table
 
@@ -303,7 +366,31 @@ def pass2_generate_code(lines, symbol_table):
     for line_num, line in enumerate(lines, 1):
         label, instruction, operands = parse_line(line)
         
+        # Handle .ORG directive
+        if instruction and instruction == ".ORG":
+            if not operands or len(operands) < 1:
+                raise ValueError(f"Line {line_num}: .ORG requires an address")
+            try:
+                new_address = parse_immediate(operands[0], symbol_table)
+                current_address = new_address
+            except Exception as e:
+                raise ValueError(f"Line {line_num}: Invalid .ORG address: {e}")
+            continue
+        
         if instruction:
+            # Check if it's a raw data value (hex number)
+            if instruction not in instruction_map:
+                try:
+                    # Parse as data value and encode directly
+                    data_value = parse_immediate(instruction, symbol_table)
+                    binary_word = sign_extend_to_32bit(data_value)
+                    hex_word = binary_to_hex(binary_word)
+                    output.append((current_address, binary_word, hex_word, line.strip()))
+                    current_address += 1
+                    continue
+                except:
+                    raise ValueError(f"Line {line_num}: Unknown instruction '{instruction}'")
+            
             try:
                 words = encode_instruction(instruction, operands, symbol_table)
                 for i, word in enumerate(words):
