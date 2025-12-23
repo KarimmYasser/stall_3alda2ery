@@ -4,7 +4,7 @@
 > _Fall 2025 - Computer Engineering Department_
 
 [![VHDL](https://img.shields.io/badge/Language-VHDL-blue.svg)](https://en.wikipedia.org/wiki/VHDL)
-[![Status](https://img.shields.io/badge/Status-Phase%202-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-Completed-green.svg)]()
 [![Architecture](https://img.shields.io/badge/Architecture-32--bit%20RISC-green.svg)]()
 
 ---
@@ -588,5 +588,6 @@ vsim -do run_fetch_tb.do
 - DO files have been updated to reference new paths
 - Top-level processor connects Fetch, IF/ID register, and Control Unit
 - Ready for integration of remaining pipeline stages
+
 
 
